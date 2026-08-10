@@ -1,0 +1,21 @@
+<% content_for :title, "Log in" %>
+
+<section class="auth-form">
+  <h1>Log in</h1>
+
+  <%= form_with url: login_path, method: :post do |f| %>
+    <div class="field">
+      <%= f.label :username %>
+      <%= f.text_field :username, autofocus: true, autocomplete: "username" %>
+    </div>
+
+    <div class="field">
+      <%= f.label :password %>
+      <%= f.password_field :password, autocomplete: "current-password" %>
+    </div>
+
+    <%= f.submit "Log in", class: "btn btn-primary" %>
+  <% end %>
+
+  <p class="muted">New here? <%= link_to "Create an account", signup_path %></p>
+</section>

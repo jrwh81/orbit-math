@@ -1,0 +1,18 @@
+<% content_for :title, "Solo run" %>
+
+<section class="game-page">
+  <h1>Solo run <span class="difficulty-badge"><%= @game_session.puzzle.difficulty_label %></span></h1>
+
+  <%= render "games/board",
+        game_session: @game_session,
+        game_state: GameStatePresenter.new(@game_session).as_json,
+        mode: "solo",
+        submit_url: solo_game_moves_path(@game_session) %>
+
+  <% if @game_session.completed? %>
+    <div class="completion-banner">
+      <p>Time's up! You claimed <%= @game_session.score_for(current_user) %> targets.</p>
+      <%= button_to "Play again", solo_games_path(difficulty: @game_session.puzzle.difficulty), class: "btn btn-primary" %>
+    </div>
+  <% end %>
+</section>

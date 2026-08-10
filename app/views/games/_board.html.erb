@@ -1,0 +1,55 @@
+<div class="game-board-wrap"
+     data-controller="grid<%= " multiplayer" if mode == "multiplayer" %>"
+     data-grid-submit-url-value="<%= submit_url %>"
+     data-grid-finish-url-value="<%= mode == "solo" ? finish_solo_game_path(game_session) : finish_multiplayer_game_path(game_session) %>"
+     data-grid-new-game-url-value="<%= mode == "solo" ? new_solo_game_path : multiplayer_games_path %>"
+     data-grid-home-url-value="<%= root_path %>"
+     data-grid-current-user-id-value="<%= current_user.id %>"
+     data-grid-state-value="<%= game_state.to_json %>"
+     <% if mode == "multiplayer" %>
+       data-multiplayer-game-session-id-value="<%= game_session.id %>"
+       data-multiplayer-current-user-id-value="<%= current_user.id %>"
+     <% end %>>
+
+  <div class="scoreboard" data-grid-target="scoreboard">
+    <!-- rendered by grid_controller.js from state -->
+  </div>
+
+  <div class="timer-indicator" data-grid-target="timer">
+    <!-- countdown clock rendered by grid_controller.js -->
+  </div>
+
+  <div class="targets-row" data-grid-target="targets">
+    <!-- target chips rendered by grid_controller.js -->
+  </div>
+
+  <div class="expression-bar">
+    <span class="expression" data-grid-target="expression">&mdash;</span>
+    <button type="button" class="btn btn-small" data-action="grid#clearPath">Clear</button>
+    <button type="button" class="btn btn-small btn-primary" data-action="grid#submitPath">Check</button>
+  </div>
+
+  <div class="grid-stage">
+    <div class="grid" data-grid-target="grid">
+      <!-- cells rendered by grid_controller.js -->
+    </div>
+    <div class="solve-popup-layer" data-grid-target="popupLayer">
+      <!-- floating "3 + 5 = 8" popups appended here on each claim -->
+    </div>
+  </div>
+
+  <p class="grid-help">
+    Click a neighboring asteroid to <strong>add</strong> it to your chain.
+    Double-click a neighboring asteroid to <strong>multiply</strong> instead.
+    Click the last cell again to undo it. The moment your chain matches a
+    cargo target, it's claimed automatically, a fresh target rotates in,
+    and the numbers you just used get replaced &mdash; rack up as many as
+    you can before time runs out.
+  </p>
+
+  <div class="game-message" data-grid-target="message"></div>
+
+  <div data-grid-target="completion">
+    <!-- populated by grid_controller.js the instant the game completes -->
+  </div>
+</div>

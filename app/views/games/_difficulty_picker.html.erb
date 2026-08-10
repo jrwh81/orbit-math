@@ -1,0 +1,14 @@
+<div class="difficulty-picker">
+  <% levels.each do |key, preset| %>
+    <label class="difficulty-card">
+      <input type="radio" name="difficulty" value="<%= key %>" <%= "checked" if key == selected %>>
+      <span class="difficulty-name"><%= preset[:label] %></span>
+      <span class="difficulty-meta"><%= preset[:size] %>&times;<%= preset[:size] %> grid</span>
+      <span class="difficulty-meta"><%= preset[:time_limit_seconds] %>s round</span>
+      <span class="difficulty-meta">
+        <%= preset[:multiply_probability].zero? ? "Addition only" : "Addition + multiplication" %>
+      </span>
+      <span class="difficulty-meta">Values up to <%= preset[:max_target_value] %></span>
+    </label>
+  <% end %>
+</div>

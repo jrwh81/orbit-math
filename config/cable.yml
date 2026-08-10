@@ -1,0 +1,15 @@
+development:
+  adapter: async
+
+test:
+  adapter: test
+
+# MVP uses the in-process "async" adapter so multiplayer works out of the
+# box on a single server with zero extra infrastructure (no Redis needed).
+# When you scale beyond one server/dyno, switch this to the redis adapter:
+#
+#   adapter: redis
+#   url: <%= ENV.fetch("REDIS_URL", "redis://localhost:6379/1") %>
+#   channel_prefix: orbit_math_production
+production:
+  adapter: async

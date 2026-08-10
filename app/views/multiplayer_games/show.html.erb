@@ -1,0 +1,55 @@
+<% content_for :title, "Multiplayer game" %>
+
+<section class="game-page">
+  <h1>Multiplayer &middot; code <span class="join-code"><%= @game_session.join_code %></span>
+    <span class="difficulty-badge"><%= @game_session.puzzle.difficulty_label %></span>
+  </h1>
+
+  <% if @game_session.waiting? %>
+    <div class="card waiting-room" data-controller="multiplayer"
+         data-multiplayer-game-session-id-value="<%= @game_session.id %>"
+         data-multiplayer-current-user-id-value="<%= current_user.id %>"
+         data-multiplayer-waiting-value="true">
+      <h2>Waiting room</h2>
+      <p>Share this code with your opponent: <strong class="join-code"><%= @game_session.join_code %></strong></p>
+
+      <ul class="player-list">
+        <% @game_session.participants.includes(:user).order(:player_number).each do |p| %>
+          <li>Player <%= p.player_number %>: <%= p.user.name %><%= " (host)" if p.user_id == @game_session.host_id %></li>
+        <% end %>
+        <% if @game_session.participants.count < 2 %>
+          <li class="muted">Waiting for an opponent to join&hellip;</li>
+        <% end %>
+      </ul>
+
+      <% if @game_session.host_id == current_user.id %>
+        <%= button_to "Start game", start_multiplayer_game_path(@game_session),
+              class: "btn btn-primary",
+              disabled: @game_session.participants.count < 2 %>
+      <% else %>
+        <p class="muted">Waiting for the host to start the game&hellip;</p>
+      <% end %>
+    </div>
+  <% else %>
+    <%= render "games/board",
+          game_session: @game_session,
+          game_state: GameStatePresenter.new(@game_session).as_json,
+          mode: "multiplayer",
+          submit_url: multiplayer_game_moves_path(@game_session) %>
+
+    <% if @game_session.completed? %>
+      <div class="completion-banner">
+        <% winner = @game_session.winner %>
+        <p>
+          <% if winner %>
+            <strong><%= winner.name %></strong> wins <%= @game_session.score_for(winner) %>
+            &ndash; <%= @game_session.score_for(@game_session.opponent_of(winner)) %>!
+          <% else %>
+            It's a tie!
+          <% end %>
+        </p>
+        <%= link_to "Back to lobby", multiplayer_games_path, class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  <% end %>
+</section>

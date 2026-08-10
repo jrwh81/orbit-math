@@ -1,0 +1,64 @@
+<% content_for :title, "Multiplayer" %>
+
+<section class="hero hero-compact">
+  <h1>Multiplayer</h1>
+  <p class="hero-copy">
+    Host a field and share the code, or join a friend's game below. Both
+    players see the exact same asteroid grid and race to claim each cargo
+    target first.
+  </p>
+</section>
+
+<section class="lobby-grid">
+  <div class="card">
+    <h2>Host a game</h2>
+    <p class="muted">Pick a difficulty, then share the 6-character code with your opponent.</p>
+    <%= form_with url: multiplayer_games_path, method: :post do %>
+      <%= render "games/difficulty_picker", levels: @difficulty_levels, selected: PuzzleGenerator::DEFAULT_DIFFICULTY %>
+      <%= submit_tag "Host new game", class: "btn btn-primary" %>
+    <% end %>
+  </div>
+
+  <div class="card">
+    <h2>Join with a code</h2>
+    <%= form_with url: join_multiplayer_game_path, method: :post, local: true do |f| %>
+      <div class="field">
+        <%= f.label :code, "Game code" %>
+        <%= f.text_field :code, placeholder: "e.g. 7F3K2Q", maxlength: 6, style: "text-transform:uppercase" %>
+      </div>
+      <%= f.submit "Join game", class: "btn btn-secondary" %>
+    <% end %>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Open games waiting for an opponent</h2>
+  <% if @open_games.any? %>
+    <ul class="game-list">
+      <% @open_games.each do |g| %>
+        <li>
+          hosted by <%= g.host.name %> &middot; code <strong><%= g.join_code %></strong>
+          &middot; <span class="difficulty-badge"><%= g.puzzle.difficulty_label %></span>
+          <%= button_to "Join", join_multiplayer_game_path, params: { code: g.join_code }, class: "btn btn-small" %>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="muted">Nobody's waiting right now &mdash; host a game above.</p>
+  <% end %>
+</section>
+
+<% if @my_games.any? %>
+  <section class="card">
+    <h2>Your multiplayer games</h2>
+    <ul class="game-list">
+      <% @my_games.each do |g| %>
+        <li>
+          <%= g.status %> &middot; code <%= g.join_code %>
+          &middot; <span class="difficulty-badge"><%= g.puzzle.difficulty_label %></span> &middot;
+          <%= link_to "Open", multiplayer_game_path(g) %>
+        </li>
+      <% end %>
+    </ul>
+  </section>
+<% end %>

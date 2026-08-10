@@ -1,0 +1,17 @@
+<% content_for :title, "Solo" %>
+
+<section class="hero hero-compact">
+  <h1>Solo run</h1>
+  <p class="hero-copy">
+    A fresh asteroid field, all to yourself. Claim every cargo target on the
+    board to finish the run &mdash; there's no clock, so take your time
+    planning chains.
+  </p>
+
+  <%= form_with url: solo_games_path, method: :post do %>
+    <%= render "games/difficulty_picker", levels: @difficulty_levels, selected: PuzzleGenerator::DEFAULT_DIFFICULTY %>
+    <div class="hero-actions">
+      <%= submit_tag "Launch field", class: "btn btn-primary" %>
+    </div>
+  <% end %>
+</section>

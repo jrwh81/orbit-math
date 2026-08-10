@@ -1,0 +1,12 @@
+{
+  "name": "OrbitMath",
+  "short_name": "OrbitMath",
+  "description": "Link numbers. Beat the belt. Race for the loot.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0e21",
+  "theme_color": "#0b0e21",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

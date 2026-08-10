@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -e
+
+# Starts the app locally on http://localhost:3000
+exec bin/rails server -p "${PORT:-3000}"

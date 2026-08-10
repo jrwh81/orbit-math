@@ -1,0 +1,23 @@
+<% content_for :title, "Leaderboard" %>
+
+<section class="hero hero-compact">
+  <h1>Leaderboard</h1>
+  <p class="hero-copy">Top players ranked by games won, then total targets claimed.</p>
+</section>
+
+<section class="card">
+  <% if @top_by_wins.any? %>
+    <ol class="game-list">
+      <% @top_by_wins.each do |stat| %>
+        <li>
+          <strong><%= stat.user.name %></strong>
+          &middot; <%= stat.games_won %> wins
+          &middot; <%= stat.targets_claimed %> targets claimed
+          &middot; <%= stat.games_played %> games played
+        </li>
+      <% end %>
+    </ol>
+  <% else %>
+    <p class="muted">No games played yet.</p>
+  <% end %>
+</section>
