@@ -77,10 +77,22 @@ class GameSession < ApplicationRecord
     moves.where(user: user, claimed: true).maximum(:result_value) || 0
   end
 
-  # A monotonically-increasing id for the next target to rotate in --
-  # count of everything ever issued (claimed history + still-visible) + 1.
+  # A genuinely unique id for the next target to rotate in, backed by a
+  # real persistent counter (next_id_seq) rather than a derived formula.
+  # This MUST increment on every single call, including repeated calls
+  # within the same claim -- a claim that also triggers a repair (see
+  # ClaimService#repair_invalidated_targets) issues MORE than one new id
+  # in a single pass, and a formula like "claims.size + active_targets.size + 1"
+  # has no way to account for that. Getting this wrong doesn't just risk
+  # a cosmetic duplicate id: two active targets sharing an id means
+  # claiming EITHER one removes BOTH via `reject { |t| t["id"] == ... }`,
+  # silently shrinking the active list by an extra slot on top of the
+  # normal one -- a real bug that made it all the way to production
+  # before being caught.
   def next_target_id
-    "t#{claims.size + active_targets.size + 1}"
+    id = "t#{next_id_seq}"
+    self.next_id_seq += 1
+    id
   end
 
   private
@@ -115,6 +127,7 @@ class GameSession < ApplicationRecord
   def initialize_round!
     self.active_targets = puzzle.targets.map(&:dup)
     self.active_grid = puzzle.grid.map(&:dup)
+    self.next_id_seq = active_targets.size + 1 # t1..tN already used by the initial targets
 
     preset = PuzzleGenerator::DIFFICULTY_LEVELS[puzzle.difficulty]
     return unless preset

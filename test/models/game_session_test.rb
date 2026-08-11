@@ -12,6 +12,21 @@ class GameSessionTest < ActiveSupport::TestCase
     assert_equal PuzzleGenerator::DIFFICULTY_LEVELS.dig("beginner", :time_limit_seconds), game_session.time_limit_seconds
   end
 
+  test "next_target_id issues genuinely unique, incrementing ids across many sequential calls" do
+    # This is the direct unit-level check for the actual root cause of a
+    # real bug: next_target_id used to be a derived formula that assumed
+    # exactly one id gets issued per claim, which silently broke the
+    # moment a claim also triggered a repair (see ClaimService). Now
+    # it's a real persistent counter -- calling it repeatedly, even
+    # without saving in between, must never repeat a value.
+    user = User.create!(username: "gs_id_seq", password: "password123")
+    puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 6)
+    game_session = GameSession.create!(mode: :solo, status: :active, puzzle: puzzle, host: user)
+
+    ids = 10.times.map { game_session.next_target_id }
+    assert_equal ids, ids.uniq, "every call should return a genuinely unique id, even before any save"
+  end
+
   test "next_target_id increments monotonically as claims accumulate and the active list stays constant size" do
     user = User.create!(username: "gs_ids", password: "password123")
     puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 2)

@@ -69,25 +69,17 @@ class ClaimService
       target = @game_session.active_targets.find { |t| t["value"] == value }
       next unless target
 
-      # All the ids we might need this claim (the primary replacement,
-      # plus any repairs) come from one running counter so none collide.
-      # Derives its starting point from GameSession#next_target_id (the
-      # single source of truth for that formula) rather than
-      # reimplementing the arithmetic here.
-      id_counter = @game_session.next_target_id[1..].to_i
-      next_id = -> { id = "t#{id_counter}"; id_counter += 1; id }
-
       grid = @game_session.active_grid.map(&:dup) # fresh array object, not a mutated live reference --
       regenerate_cells!(grid, @coords)             # see the comment on regenerate_cells! for why this matters
 
       remaining_targets = @game_session.active_targets.reject { |t| t["id"] == target["id"] }
-      remaining_targets = repair_invalidated_targets(grid, remaining_targets, next_id)
+      remaining_targets = repair_invalidated_targets(grid, remaining_targets)
 
       remaining_values = remaining_targets.map { |t| t["value"] }
       replacement = PuzzleGenerator.add_target(
         grid: grid,
         difficulty: @game_session.puzzle.difficulty,
-        id: next_id.call,
+        id: @game_session.next_target_id,
         existing_values: remaining_values
       )
 
@@ -134,7 +126,13 @@ class ClaimService
   # relied on one of the cells that just changed. Re-check every
   # remaining target against the updated grid and swap in a fresh
   # (still-solvable) value + id for any that no longer resolve.
-  def repair_invalidated_targets(grid, targets, next_id)
+  #
+  # Each call to @game_session.next_target_id here increments a real
+  # persisted counter -- important, because a single claim can trigger
+  # more than one repair alongside the primary replacement, and every
+  # one of those needs a genuinely unique id (see the comment on
+  # GameSession#next_target_id for what goes wrong if they collide).
+  def repair_invalidated_targets(grid, targets)
     targets.map do |t|
       next t if PuzzleSolver.find_path_for(grid, t["value"])
 
@@ -142,7 +140,7 @@ class ClaimService
       fixed = PuzzleGenerator.add_target(
         grid: grid,
         difficulty: @game_session.puzzle.difficulty,
-        id: next_id.call,
+        id: @game_session.next_target_id,
         existing_values: other_values
       )
       fixed || t # extremely unlikely fallback: leave it rather than crash

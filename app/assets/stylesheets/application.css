@@ -16,10 +16,25 @@
 
 body {
   margin: 0;
-  background: radial-gradient(circle at top, #161b3f 0%, var(--bg) 60%);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   min-height: 100vh;
+  background-color: var(--bg);
+  background-image:
+    /* two soft nebula glows for depth/color */
+    radial-gradient(circle at 15% 20%, rgba(110, 227, 255, 0.09), transparent 42%),
+    radial-gradient(circle at 85% 75%, rgba(255, 184, 77, 0.07), transparent 40%),
+    radial-gradient(circle at top, #161b3f 0%, var(--bg) 60%),
+    /* a repeating tile of small stars, scattered rather than gridded */
+    radial-gradient(1.6px 1.6px at 20px 30px, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 90px 110px, #fff, transparent),
+    radial-gradient(2px 2px at 150px 60px, #fff, transparent),
+    radial-gradient(1px 1px at 60px 170px, #cdd6ff, transparent),
+    radial-gradient(1.4px 1.4px at 190px 190px, #fff, transparent),
+    radial-gradient(1px 1px at 130px 20px, #cdd6ff, transparent),
+    radial-gradient(1.6px 1.6px at 10px 140px, #fff, transparent);
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat;
+  background-size: auto, auto, auto, 220px 220px, 220px 220px, 220px 220px, 220px 220px, 220px 220px, 220px 220px, 220px 220px;
 }
 
 a { color: var(--accent); text-decoration: none; }
@@ -195,12 +210,32 @@ a:hover { text-decoration: underline; }
   100% { opacity: 0; transform: translate(-50%, -170%) scale(0.9); }
 }
 
-.cell.just-refreshed { animation: cell-refresh-flip 0.5s ease-in-out; }
-@keyframes cell-refresh-flip {
-  0%   { transform: rotateY(0deg) scale(1); }
-  45%  { transform: rotateY(90deg) scale(0.85); opacity: 0.4; }
-  55%  { transform: rotateY(-90deg) scale(0.85); opacity: 0.4; }
-  100% { transform: rotateY(0deg) scale(1); opacity: 1; }
+.cell.just-refreshed { animation: cell-impact 0.4s ease-out; }
+@keyframes cell-impact {
+  0%   { transform: scale(1); filter: brightness(1); }
+  20%  { transform: scale(0.8); filter: brightness(1.7); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* Small rock fragments spawned by grid_controller.js#spawnShatterEffect,
+   one burst per cell that just got claimed and regenerated. Appended to
+   the same popup layer as the solve popup (outside gridTarget) so a grid
+   re-render never cuts the animation off mid-flight. */
+.shatter-piece {
+  position: absolute;
+  width: 7px; height: 7px;
+  background: linear-gradient(135deg, var(--bg-cell), #05070f);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 30% 70% 60% 40% / 50% 40% 60% 50%;
+  transform: translate(-50%, -50%);
+  animation: shatter-fly 0.7s ease-out forwards;
+}
+@keyframes shatter-fly {
+  0%   { transform: translate(-50%, -50%) rotate(0deg) scale(1); opacity: 0.95; }
+  100% {
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot)) scale(0.25);
+    opacity: 0;
+  }
 }
 
 .chain-line {
@@ -219,12 +254,29 @@ a:hover { text-decoration: underline; }
 
 .cell {
   flex: 1; aspect-ratio: 1; position: relative;
-  background: var(--bg-cell); border: 1px solid var(--border); border-radius: 10px;
+  border: 1px solid var(--border);
   color: var(--text); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  /* rocky texture: a bright highlight + two darker "craters" over the base color */
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.12), transparent 35%),
+    radial-gradient(circle at 72% 68%, rgba(0, 0, 0, 0.28), transparent 32%),
+    radial-gradient(circle at 78% 22%, rgba(0, 0, 0, 0.18), transparent 22%),
+    var(--bg-cell);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
 }
-.cell-value { font-size: clamp(1.6rem, 7vw, 2.6rem); font-weight: 800; line-height: 1; }
+
+/* Irregular, rock-like silhouettes instead of a uniform rounded square --
+   cycled across cells by grid_controller.js (data-shape) so neighboring
+   asteroids don't all look identical. */
+.cell[data-shape="0"] { border-radius: 42% 58% 65% 35% / 45% 40% 60% 55%; }
+.cell[data-shape="1"] { border-radius: 60% 40% 45% 55% / 55% 60% 40% 45%; }
+.cell[data-shape="2"] { border-radius: 35% 65% 55% 45% / 60% 45% 55% 40%; }
+.cell[data-shape="3"] { border-radius: 55% 45% 40% 60% / 40% 55% 45% 60%; }
+.cell[data-shape="4"] { border-radius: 48% 52% 58% 42% / 50% 42% 58% 50%; }
+
+.cell-value { font-size: clamp(1.6rem, 7vw, 2.6rem); font-weight: 800; line-height: 1; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); }
 .cell:hover { border-color: var(--accent); }
 .cell.selected { background: var(--accent); color: #051019; border-color: var(--accent); transform: scale(1.06); z-index: 3; }
 .cell.disabled { cursor: default; opacity: 0.6; }

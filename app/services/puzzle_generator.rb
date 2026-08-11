@@ -148,27 +148,41 @@ class PuzzleGenerator
   # keeping the board's solvable-targets supply effectively endless
   # instead of the game grinding to a halt once a fixed list runs out.
   #
-  # existing_values lets the caller avoid handing back a value that's
-  # already showing elsewhere on the current target list, purely so the
-  # rotating list reads as varied rather than repeating a number that's
-  # still visible -- not a hard uniqueness guarantee, just nicer polish.
+  # existing_values is a SOFT preference, not a hard requirement: first
+  # try to avoid handing back a value that's already showing elsewhere
+  # on the current target list (nicer polish, the rotating list reads as
+  # more varied), but if that can't be satisfied, fall back to accepting
+  # ANY solvable chain regardless of duplicates. Duplicate target values
+  # are explicitly allowed by design (see PuzzleGenerator's own class
+  # comment) -- a small, constrained board (Beginner's addition-only 4x4
+  # grid is the prime example) can easily run out of genuinely NEW values
+  # long before it runs out of valid chains. Treating "avoid duplicates"
+  # as a hard requirement there meant this could return nil, which
+  # silently shrank the active target list by one and broke the "the
+  # board never runs dry" guarantee every other part of this app assumes.
   def add_target_to(grid, id, existing_values: [])
-    12.times do
+    find_target(grid, id, avoid: existing_values) || find_target(grid, id, avoid: [])
+  end
+
+  private
+
+  def find_target(grid, id, avoid:)
+    attempts = 20
+
+    attempts.times do
       length = next_chain_length
       path = random_self_avoiding_path(grid, length)
       next if path.nil?
 
       fill_path_values!(grid, path)
       ops, value = build_ops_and_value(grid, path)
-      next if existing_values.include?(value)
+      next if avoid.include?(value)
 
       return { "id" => id, "value" => value, "length" => path.size }
     end
 
     nil
   end
-
-  private
 
   # ---- bag randomizers -----------------------------------------------
 

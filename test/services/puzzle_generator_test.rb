@@ -154,7 +154,14 @@ class PuzzleGeneratorTest < ActiveSupport::TestCase
     assert path, "the newly rotated-in target should be solvable on the existing grid"
   end
 
-  test "add_target avoids duplicating a value that's already showing elsewhere on the active list" do
+  test "add_target prefers avoiding a duplicate value, but falls back to any solvable chain rather than returning nil" do
+    # This is the inverse of the old (buggy) expectation: when every
+    # possible value is "already showing" (impossible to truly avoid a
+    # duplicate), add_target must still succeed by falling back to
+    # accepting a duplicate value -- returning nil here is exactly the
+    # bug that let the active target list silently shrink on Beginner's
+    # small addition-only board. Duplicate target values are allowed by
+    # design; failing to find a replacement at all is not.
     puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 21)
     existing_values = (1..20).to_a # deliberately excludes every possible beginner value
 
@@ -162,8 +169,8 @@ class PuzzleGeneratorTest < ActiveSupport::TestCase
       grid: puzzle.grid, difficulty: "beginner", id: "t99", existing_values: existing_values
     )
 
-    # every possible value is "already showing", so add_target should
-    # give up gracefully (nil) rather than returning a colliding target
-    assert_nil new_target
+    refute_nil new_target, "add_target should always find SOME solvable chain, even if it must duplicate a value"
+    assert new_target["value"] <= 20
+    assert PuzzleSolver.find_path_for(puzzle.grid, new_target["value"])
   end
 end

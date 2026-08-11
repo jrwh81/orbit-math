@@ -77,6 +77,7 @@ export default class extends Controller {
     // never accumulates across a long round.
     this.remainingSeconds = newState.time_remaining_seconds ?? this.remainingSeconds
 
+    this.spawnShatterForCells(this.justRefreshedCells)
     this.render()
 
     if (justCompleted) {
@@ -244,8 +245,12 @@ export default class extends Controller {
         if (isNewest) classes.push("just-grabbed")
         if (gameOver) classes.push("disabled")
         if (this.justRefreshedCells.includes(`${r},${c}`)) classes.push("just-refreshed")
+        // Deterministic per-position variety (not random per render) so each
+        // asteroid keeps the same irregular silhouette across re-renders,
+        // instead of visibly reshaping itself on every click.
+        const shape = (r * 3 + c * 5) % 5
 
-        cellsHtml += `<button type="button" class="${classes.join(" ")}" data-row="${r}" data-col="${c}" data-action="click->grid#cellClicked">
+        cellsHtml += `<button type="button" class="${classes.join(" ")}" data-row="${r}" data-col="${c}" data-shape="${shape}" data-action="click->grid#cellClicked">
           <span class="cell-value">${value}</span>
           ${stepIndex !== -1 ? `<span class="cell-order">${stepIndex + 1}</span>` : ""}
         </button>`
@@ -504,6 +509,47 @@ export default class extends Controller {
     this.popupLayerTarget.appendChild(el)
     el.addEventListener("animationend", () => el.remove())
     setTimeout(() => el.remove(), 1800) // safety net in case animationend never fires
+  }
+
+  // Spawns a burst of small rock fragments flying outward from each cell
+  // that just got a new value -- the "asteroid breaking apart" moment.
+  // Also appended to popupLayerTarget for the same reason as the solve
+  // popup: it needs to survive the grid re-render that's about to happen.
+  spawnShatterForCells(cellKeys) {
+    cellKeys.forEach((key) => {
+      const [row, col] = key.split(",").map(Number)
+      this.spawnShatterEffect(row, col)
+    })
+  }
+
+  spawnShatterEffect(row, col) {
+    if (!this.hasPopupLayerTarget || !this.stateValue.grid) return
+
+    const size = this.stateValue.grid.length
+    const cx = ((col + 0.5) / size) * 100
+    const cy = ((row + 0.5) / size) * 100
+    const pieceCount = 6
+
+    for (let i = 0; i < pieceCount; i++) {
+      const piece = document.createElement("div")
+      piece.className = "shatter-piece"
+
+      const angle = (Math.PI * 2 * i) / pieceCount + (Math.random() * 0.6 - 0.3)
+      const distance = 24 + Math.random() * 18
+      const dx = (Math.cos(angle) * distance).toFixed(1)
+      const dy = (Math.sin(angle) * distance).toFixed(1)
+      const rot = (Math.random() * 360 - 180).toFixed(0)
+
+      piece.style.left = `${cx}%`
+      piece.style.top = `${cy}%`
+      piece.style.setProperty("--dx", `${dx}px`)
+      piece.style.setProperty("--dy", `${dy}px`)
+      piece.style.setProperty("--rot", `${rot}deg`)
+
+      this.popupLayerTarget.appendChild(piece)
+      piece.addEventListener("animationend", () => piece.remove())
+      setTimeout(() => piece.remove(), 900) // safety net in case animationend never fires
+    }
   }
 
   flashMessage(text, kind = "info") {

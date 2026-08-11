@@ -1,5 +1,99 @@
 # Changelog
 
+## v9.2 — fixed the REAL root cause behind v9.1's regression
+
+v9.1 fixed a real bug (`add_target` returning `nil` too eagerly) but
+the active target list kept shrinking anyway -- because that wasn't the
+only bug. The actual root cause: `GameSession#next_target_id` computed
+ids from a formula (`claims.size + active_targets.size + 1`) that
+silently assumed exactly **one** new id gets issued per claim.
+
+That assumption breaks the moment a claim also triggers a **repair**
+(`ClaimService#repair_invalidated_targets` -- when cell regeneration
+strands a *different* still-active target that shared one of the
+changed cells). A claim with a repair issues *two* new ids in one pass;
+the formula has no way to know that happened, so the next claim's
+`next_target_id` call recomputes the same "next" number and collides
+with an id already sitting in `active_targets`. Two targets end up
+sharing an id. Claiming either one then removes **both** via
+`reject { |t| t["id"] == target["id"] }` -- shrinking the list by an
+extra slot on top of the normal one, compounding with every collision.
+
+Fixed properly this time: `next_target_id` is now backed by a real
+persistent counter (`next_id_seq`, new column) instead of a derived
+formula, incrementing on every call -- including repeated calls within
+the same claim. `ClaimService` was simplified to call
+`@game_session.next_target_id` directly wherever a new id is needed
+(for both the primary replacement and any repairs), removing a local
+lambda-based counter that was working around the same underlying
+problem without fixing it.
+
+New test coverage: a direct unit test that `next_target_id` never
+repeats across many sequential calls even without saving in between,
+and a dedicated regression test across five seeds that explicitly
+checks for duplicate ids after every single claim (not just list size,
+which was the symptom -- duplicate ids are the actual invariant this
+protects).
+
+## v9.1 — fixed a real bug: the active target list could silently shrink
+
+Caught by the test suite on a real multiplayer run: `active_targets.size`
+dropped from 4 to 3 on Beginner difficulty and stayed there.
+
+Root cause: `PuzzleGenerator.add_target`'s "avoid a value that's already
+showing elsewhere on the list" preference was implemented as a hard
+requirement (12 attempts, give up and return `nil` if none of them
+avoided a duplicate). Beginner's board is small, addition-only, and
+capped at values 1-20 -- it can easily run out of genuinely *new*
+values well before it runs out of valid 2-cell chains. When `add_target`
+returned `nil`, `ClaimService` had nothing to rotate in, so the active
+list permanently lost a slot.
+
+Fixed by making the duplicate-avoidance a soft preference with a
+guaranteed fallback: try to avoid duplicates first, and if that fails,
+accept any solvable chain regardless of duplicates. Duplicate target
+values are explicitly allowed by design (this app has said so since
+early on) -- silently shrinking the target list was never an acceptable
+trade-off for "the list looks slightly more varied."
+
+- Fixed one existing test whose assertion directly encoded the old,
+  buggy expectation (`assert_nil` when every value was excluded) --
+  updated to assert the new, correct behavior (always finds something).
+- Added a dedicated regression test across 5 different seeds specifically
+  on Beginner difficulty (the exact scenario that surfaced this), plus
+  tightened the existing "stays solvable" invariant test to also assert
+  the list never shrinks, not just that it stays solvable.
+
+## v9 — asteroid theming: shapes, starfield, and a shatter effect
+
+Purely visual polish, no gameplay/logic changes -- the instructions have
+said "asteroids" since v1, but the board itself was just plain rounded
+rectangles. This makes the visuals match the theme.
+
+- **Cells now look like asteroids**, not blocks: irregular rock-like
+  silhouettes (five different organic `border-radius` shapes, cycled
+  deterministically by grid position via a new `data-shape` attribute so
+  each cell keeps the same silhouette across re-renders instead of
+  visibly reshaping on every click) plus a mottled rocky texture (a
+  highlight + two "crater" gradients layered over the base color).
+- **Space background** on every page: two soft nebula glows plus a
+  scattered starfield, built entirely from layered CSS `radial-gradient`s
+  (no images) tiled at a large enough size that the repeat isn't
+  obviously grid-like.
+- **Shatter effect on claim.** The `just-refreshed` cell animation
+  (previously a card-flip, which didn't really fit the theme) is now a
+  quick impact pulse, paired with `grid_controller.js#spawnShatterEffect`
+  spawning a burst of small rock fragments that fly outward and fade for
+  every cell that just got a new value -- the "asteroid breaking apart"
+  moment the theme always implied but never showed. Reuses the same
+  popup-layer overlay as the solve popup, for the same reason: it needs
+  to survive the grid's own re-render, which would otherwise cut the
+  animation off mid-flight.
+- Avoided `background-attachment: fixed` for the starfield despite it
+  being the more common approach for a "fixed" backdrop -- it's a known
+  scroll-jank risk on iOS WebKit, which matters here since this app is
+  meant to also run inside a Capacitor-wrapped mobile shell.
+
 ## v8 — solve popups + the grid itself now evolves
 
 - **Floating solve popup.** The instant a chain claims a target, a

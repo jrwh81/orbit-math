@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_01_000010) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_01_000011) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -28,6 +28,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_01_000010) do
     t.jsonb "active_targets", default: [], null: false
     t.integer "time_limit_seconds", default: 90, null: false
     t.jsonb "active_grid", default: [], null: false
+    t.integer "next_id_seq", default: 1, null: false
     t.index ["host_id"], name: "index_game_sessions_on_host_id"
     t.index ["join_code"], name: "index_game_sessions_on_join_code", unique: true
     t.index ["mode", "status"], name: "index_game_sessions_on_mode_and_status"
