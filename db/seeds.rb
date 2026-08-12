@@ -58,6 +58,9 @@ meteor = demo_user("meteor", "Meteor")
 
 puts "-- users ready: #{[nova, comet, pulsar, meteor].map(&:username).join(', ')}"
 
+nova.update!(admin: true) unless nova.admin?
+puts "-- nova is an admin (visit /admin after logging in as nova)"
+
 # ---------------------------------------------------------------------------
 # 1) A finished solo run for nova
 # ---------------------------------------------------------------------------

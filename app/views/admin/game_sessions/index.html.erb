@@ -1,0 +1,25 @@
+<% content_for :title, "Games" %>
+
+<h1>Games <span class="muted">(<%= @game_sessions.size %>)</span></h1>
+
+<div class="admin-table-wrap">
+  <table class="admin-table">
+    <thead>
+      <tr><th>ID</th><th>Mode</th><th>Difficulty</th><th>Status</th><th>Host</th><th>Players</th><th>Created</th><th></th></tr>
+    </thead>
+    <tbody>
+      <% @game_sessions.each do |g| %>
+        <tr>
+          <td><%= g.id %></td>
+          <td><%= g.mode.capitalize %></td>
+          <td><%= g.puzzle.difficulty_label %></td>
+          <td><%= admin_status_badge(g.status) %></td>
+          <td><%= g.host.name %></td>
+          <td><%= g.participants.map { |p| p.user.name }.join(", ") %></td>
+          <td><%= g.created_at.strftime("%b %-d, %Y %l:%M%P") %></td>
+          <td><%= link_to "View", admin_game_session_path(g) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

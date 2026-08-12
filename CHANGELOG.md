@@ -1,5 +1,48 @@
 # Changelog
 
+## v10 — admin backend
+
+A lightweight, custom-built admin panel — not the ActiveAdmin gem,
+deliberately (see rationale below). No new dependencies, nothing that
+can break in ways I can't test.
+
+- **New `admin` boolean column on `users`** (new migration), gating an
+  entire `/admin` namespace via a single `Admin::BaseController` that
+  every admin controller inherits from — access control lives in
+  exactly one place.
+- **`/admin`** — dashboard: total users, total games, total targets
+  claimed all-time, games currently in progress, a breakdown by
+  mode/status/difficulty, and recent signups + recent games.
+- **`/admin/users`** — every registered user with their stats
+  (games played/won, targets claimed, best solo score) at a glance;
+  click through to `/admin/users/:id` for that specific player's full
+  game history.
+- **`/admin/game_sessions`** — every game ever played, with a detail
+  page per game showing players, scores, timing, and the most recent 50
+  moves (including the human-readable expression via the existing
+  `Move#expression` method, e.g. "3 + 5").
+- **No self-serve promotion path, on purpose.** There's no UI to grant
+  admin access, and the public signup form's strong params never
+  included `:admin` (verified with a direct regression test that POSTs
+  `admin: true` at signup and confirms it's silently ignored). The only
+  way to grant admin is `bin/rails admin:promote[username]` from the
+  command line -- also `admin:demote[username]` and `admin:list`.
+- Real test coverage prioritizing the two things that actually matter
+  for an admin panel: **access control** (every admin route rejects a
+  logged-out visitor and a logged-in non-admin, tested against each
+  route directly rather than just the guard mechanism in isolation) and
+  **data correctness** (the numbers shown actually match what really
+  happened, not just that the pages load without erroring).
+- `db/seeds.rb` now makes `nova` an admin, so `/admin` has something to
+  look at immediately after a fresh `bin/rails db:seed` locally.
+
+Rationale for not using the ActiveAdmin gem: it pulls in Devise,
+Ransack, Kaminari, Formtastic, and others -- a real dependency chain
+that could easily hit its own Rails-7.1-compatibility surprise (see the
+`TaggedLogging` incident a few versions back), with no way to verify
+compatibility without a live bundler run. A custom admin panel achieves
+the same goal here with zero new dependencies.
+
 ## v9.2 — fixed the REAL root cause behind v9.1's regression
 
 v9.1 fixed a real bug (`add_target` returning `nil` too eagerly) but

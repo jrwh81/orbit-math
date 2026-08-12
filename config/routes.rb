@@ -25,6 +25,12 @@ Rails.application.routes.draw do
 
   get "leaderboard", to: "leaderboard#index"
 
+  namespace :admin do
+    root to: "dashboard#index"
+    resources :users, only: [:index, :show]
+    resources :game_sessions, only: [:index, :show]
+  end
+
   # Health check for load balancers / app store review environments
   get "up" => "rails/health#show", as: :rails_health_check
 

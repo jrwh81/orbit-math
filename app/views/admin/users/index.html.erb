@@ -1,0 +1,30 @@
+<% content_for :title, "Users" %>
+
+<h1>Users <span class="muted">(<%= @users.size %>)</span></h1>
+
+<div class="admin-table-wrap">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>Username</th><th>Display name</th><th>Email</th>
+        <th>Games played</th><th>Games won</th><th>Targets claimed</th><th>Best solo score</th>
+        <th>Joined</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @users.each do |u| %>
+        <tr>
+          <td><%= u.username %> <%= "(admin)".html_safe if u.admin? %></td>
+          <td><%= u.display_name.presence || "—" %></td>
+          <td><%= u.email.presence || "—" %></td>
+          <td><%= u.user_stat&.games_played || 0 %></td>
+          <td><%= u.user_stat&.games_won || 0 %></td>
+          <td><%= u.user_stat&.targets_claimed || 0 %></td>
+          <td><%= u.user_stat&.best_solo_score || 0 %></td>
+          <td><%= u.created_at.strftime("%b %-d, %Y") %></td>
+          <td><%= link_to "View", admin_user_path(u) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

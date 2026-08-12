@@ -336,3 +336,36 @@ a:hover { text-decoration: underline; }
 .stats-auto-note { font-size: 0.78rem; color: var(--muted); margin: 0; }
 
 .waiting-room { text-align: center; }
+
+/* ---- Admin ---------------------------------------------------------- */
+.admin-main { max-width: 1100px; }
+
+.admin-stat-cards { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+.admin-stat-card {
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 22px; min-width: 140px;
+}
+.admin-stat-card .admin-stat-value { display: block; font-size: 1.9rem; font-weight: 800; color: var(--accent); }
+.admin-stat-card .admin-stat-label { font-size: 0.8rem; color: var(--muted); }
+
+.admin-section { margin-bottom: 28px; }
+.admin-section h2 { font-size: 1.05rem; margin-bottom: 10px; }
+
+.admin-table-wrap { overflow-x: auto; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.admin-table th, .admin-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+.admin-table th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.admin-table tr:last-child td { border-bottom: none; }
+.admin-table tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+.admin-table a { font-weight: 600; }
+
+.admin-badge {
+  display: inline-block; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.03em;
+  border-radius: 20px; padding: 1px 8px; text-transform: uppercase;
+}
+.admin-badge-admin { color: var(--accent-2); border: 1px solid var(--accent-2); }
+.admin-badge-active { color: var(--success); border: 1px solid var(--success); }
+.admin-badge-waiting { color: var(--muted); border: 1px solid var(--border); }
+.admin-badge-completed { color: var(--accent); border: 1px solid var(--accent); }
+
+.admin-back-link { display: inline-block; margin-bottom: 16px; font-size: 0.85rem; }

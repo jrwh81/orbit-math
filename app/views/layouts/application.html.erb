@@ -29,6 +29,9 @@
           <%= link_to "Solo", new_solo_game_path %>
           <%= link_to "Multiplayer", multiplayer_games_path %>
           <%= link_to "Leaderboard", leaderboard_path %>
+          <% if current_user.admin? %>
+            <%= link_to "Admin", admin_root_path %>
+          <% end %>
           <span class="nav-user"><%= current_user.name %></span>
           <%= button_to "Log out", logout_path, method: :delete, class: "link-button" %>
         <% else %>

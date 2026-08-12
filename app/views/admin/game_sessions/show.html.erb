@@ -1,0 +1,87 @@
+<% content_for :title, "Game ##{@game_session.id}" %>
+
+<%= link_to "\u2190 All games", admin_game_sessions_path, class: "admin-back-link" %>
+
+<h1>Game #<%= @game_session.id %> <%= admin_status_badge(@game_session.status) %></h1>
+<p class="muted">
+  <%= @game_session.mode.capitalize %> &middot; <%= @game_session.puzzle.difficulty_label %>
+  &middot; hosted by <%= @game_session.host.name %>
+  <% if @game_session.multiplayer? %> &middot; code <%= @game_session.join_code %><% end %>
+</p>
+
+<div class="admin-stat-cards">
+  <div class="admin-stat-card">
+    <span class="admin-stat-value"><%= @game_session.claims.size %></span>
+    <span class="admin-stat-label">total claims</span>
+  </div>
+  <div class="admin-stat-card">
+    <span class="admin-stat-value"><%= @game_session.time_limit_seconds %>s</span>
+    <span class="admin-stat-label">round length</span>
+  </div>
+  <% if @game_session.multiplayer? && @game_session.completed? %>
+    <div class="admin-stat-card">
+      <span class="admin-stat-value"><%= @game_session.winner&.name || "Tie" %></span>
+      <span class="admin-stat-label">winner</span>
+    </div>
+  <% end %>
+</div>
+
+<section class="admin-section">
+  <h2>Players</h2>
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr><th>Player</th><th>Score</th><th></th></tr>
+      </thead>
+      <tbody>
+        <% @game_session.participants.includes(:user).order(:player_number).each do |p| %>
+          <tr>
+            <td><%= p.user.name %><%= " (host)" if p.user_id == @game_session.host_id %></td>
+            <td><%= @game_session.score_for(p.user) %></td>
+            <td><%= link_to "View player", admin_user_path(p.user) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="admin-section">
+  <h2>Timing</h2>
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <tbody>
+        <tr><td>Created</td><td><%= @game_session.created_at.strftime("%B %-d, %Y %l:%M%P") %></td></tr>
+        <tr><td>Started</td><td><%= @game_session.started_at&.strftime("%B %-d, %Y %l:%M%P") || "—" %></td></tr>
+        <tr><td>Ended</td><td><%= @game_session.ended_at&.strftime("%B %-d, %Y %l:%M%P") || "—" %></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="admin-section">
+  <h2>Moves <span class="muted">(most recent 50)</span></h2>
+  <% recent_moves = @game_session.moves.includes(:user).order(created_at: :desc).limit(50) %>
+  <% if recent_moves.any? %>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Player</th><th>Expression</th><th>Result</th><th>Claimed?</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+          <% recent_moves.each do |m| %>
+            <tr>
+              <td><%= m.user.name %></td>
+              <td><%= m.expression %></td>
+              <td><%= m.result_value %></td>
+              <td><%= m.claimed? ? "Yes" : "No" %></td>
+              <td><%= m.created_at.strftime("%l:%M:%S%P") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <p class="muted">No moves submitted yet.</p>
+  <% end %>
+</section>

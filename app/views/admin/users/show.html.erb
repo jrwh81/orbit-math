@@ -1,0 +1,57 @@
+<% content_for :title, @user.username %>
+
+<%= link_to "\u2190 All users", admin_users_path, class: "admin-back-link" %>
+
+<h1><%= @user.name %> <%= "(admin)".html_safe if @user.admin? %></h1>
+<p class="muted">
+  @<%= @user.username %>
+  <% if @user.email.present? %> &middot; <%= @user.email %><% end %>
+  &middot; joined <%= @user.created_at.strftime("%B %-d, %Y") %>
+</p>
+
+<div class="admin-stat-cards">
+  <div class="admin-stat-card">
+    <span class="admin-stat-value"><%= @user.user_stat&.games_played || 0 %></span>
+    <span class="admin-stat-label">games played</span>
+  </div>
+  <div class="admin-stat-card">
+    <span class="admin-stat-value"><%= @user.user_stat&.games_won || 0 %></span>
+    <span class="admin-stat-label">games won (<%= @user.user_stat&.win_rate || 0 %>%)</span>
+  </div>
+  <div class="admin-stat-card">
+    <span class="admin-stat-value"><%= @user.user_stat&.targets_claimed || 0 %></span>
+    <span class="admin-stat-label">targets claimed</span>
+  </div>
+  <div class="admin-stat-card">
+    <span class="admin-stat-value"><%= @user.user_stat&.best_solo_score || 0 %></span>
+    <span class="admin-stat-label">best solo score</span>
+  </div>
+</div>
+
+<section class="admin-section">
+  <h2>Game history</h2>
+  <% if @game_sessions.any? %>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>ID</th><th>Mode</th><th>Difficulty</th><th>Status</th><th>Score</th><th>Created</th><th></th></tr>
+        </thead>
+        <tbody>
+          <% @game_sessions.each do |g| %>
+            <tr>
+              <td><%= g.id %></td>
+              <td><%= g.mode.capitalize %></td>
+              <td><%= g.puzzle.difficulty_label %></td>
+              <td><%= admin_status_badge(g.status) %></td>
+              <td><%= g.score_for(@user) %></td>
+              <td><%= g.created_at.strftime("%b %-d, %Y %l:%M%P") %></td>
+              <td><%= link_to "View", admin_game_session_path(g) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <p class="muted">No games played yet.</p>
+  <% end %>
+</section>

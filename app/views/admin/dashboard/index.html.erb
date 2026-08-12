@@ -1,0 +1,117 @@
+<% content_for :title, "Dashboard" %>
+
+<h1>Dashboard</h1>
+
+<div class="admin-stat-cards">
+  <div class="admin-stat-card">
+    <span class="admin-stat-value"><%= @total_users %></span>
+    <span class="admin-stat-label">total users</span>
+  </div>
+  <div class="admin-stat-card">
+    <span class="admin-stat-value"><%= @total_games %></span>
+    <span class="admin-stat-label">total games</span>
+  </div>
+  <div class="admin-stat-card">
+    <span class="admin-stat-value"><%= @total_claims %></span>
+    <span class="admin-stat-label">targets claimed (all-time)</span>
+  </div>
+  <div class="admin-stat-card">
+    <span class="admin-stat-value"><%= @games_by_status["active"] || 0 %></span>
+    <span class="admin-stat-label">games in progress right now</span>
+  </div>
+</div>
+
+<section class="admin-section">
+  <h2>Games by mode / status / difficulty</h2>
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr><th>Breakdown</th><th>Count</th></tr>
+      </thead>
+      <tbody>
+        <% @games_by_mode.each do |mode, count| %>
+          <tr><td>Mode: <%= mode.capitalize %></td><td><%= count %></td></tr>
+        <% end %>
+        <% @games_by_status.each do |status, count| %>
+          <tr><td>Status: <%= admin_status_badge(status) %></td><td><%= count %></td></tr>
+        <% end %>
+        <% @games_by_difficulty.each do |difficulty, count| %>
+          <tr><td>Difficulty: <%= difficulty&.capitalize || "Unknown" %></td><td><%= count %></td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="admin-section">
+  <h2>Games currently in progress</h2>
+  <% if @active_games.any? %>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>ID</th><th>Mode</th><th>Difficulty</th><th>Host</th><th>Started</th><th></th></tr>
+        </thead>
+        <tbody>
+          <% @active_games.each do |g| %>
+            <tr>
+              <td><%= g.id %></td>
+              <td><%= g.mode.capitalize %></td>
+              <td><%= g.puzzle.difficulty_label %></td>
+              <td><%= g.host.name %></td>
+              <td><%= time_ago_in_words(g.started_at) %> ago</td>
+              <td><%= link_to "View", admin_game_session_path(g) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <p class="muted">No games in progress right now.</p>
+  <% end %>
+</section>
+
+<section class="admin-section">
+  <h2>Recent signups</h2>
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr><th>Username</th><th>Display name</th><th>Email</th><th>Joined</th><th></th></tr>
+      </thead>
+      <tbody>
+        <% @recent_users.each do |u| %>
+          <tr>
+            <td><%= u.username %> <%= "(admin)".html_safe if u.admin? %></td>
+            <td><%= u.display_name.presence || "—" %></td>
+            <td><%= u.email.presence || "—" %></td>
+            <td><%= u.created_at.strftime("%b %-d, %Y") %></td>
+            <td><%= link_to "View", admin_user_path(u) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="admin-section">
+  <h2>Recent games</h2>
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr><th>ID</th><th>Mode</th><th>Difficulty</th><th>Status</th><th>Host</th><th>Created</th><th></th></tr>
+      </thead>
+      <tbody>
+        <% @recent_games.each do |g| %>
+          <tr>
+            <td><%= g.id %></td>
+            <td><%= g.mode.capitalize %></td>
+            <td><%= g.puzzle.difficulty_label %></td>
+            <td><%= admin_status_badge(g.status) %></td>
+            <td><%= g.host.name %></td>
+            <td><%= g.created_at.strftime("%b %-d, %Y %l:%M%P") %></td>
+            <td><%= link_to "View", admin_game_session_path(g) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>
