@@ -88,7 +88,7 @@ mp_session.participants.create!(user: pulsar, player_number: 2)
 # home with zero claims, simulating "comet was a bit faster all round"
 play_claims!(mp_session, 9) { |i| i % 3 == 2 ? pulsar : comet }
 GameCompletionService.call(mp_session.reload)
-puts "-- multiplayer match comet vs pulsar: comet=#{mp_session.score_for(comet)} pulsar=#{mp_session.score_for(pulsar)} status=#{mp_session.status}"
+puts "-- multiplayer match comet vs pulsar: comet=#{mp_session.points_for(comet)}pts pulsar=#{mp_session.points_for(pulsar)}pts status=#{mp_session.status}"
 
 # ---------------------------------------------------------------------------
 # 3) An open multiplayer game hosted by meteor, waiting for an opponent

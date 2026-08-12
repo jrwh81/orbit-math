@@ -24,6 +24,27 @@ class ClaimService
     alias_method :success?, :success
   end
 
+  # Points earned for claiming a target of THIS SPECIFIC VALUE -- not a
+  # flat rate per difficulty. Deliberately shares the exact same value
+  # breakpoints (10, 20, 50, 150) as the material tiers
+  # grid_controller.js uses for visual styling (crystal/gold/emerald/
+  # platinum/diamond), so a target that LOOKS rarer is always worth more
+  # points too -- the two are meant to move together, never drift apart.
+  # A public class method (not just an internal helper) so tests and any
+  # other code that needs "how many points is a target worth" have one
+  # single source of truth instead of duplicating these numbers.
+  POINT_TIERS = [
+    { max: 10, points: 25 },
+    { max: 20, points: 50 },
+    { max: 50, points: 100 },
+    { max: 150, points: 250 },
+    { max: Float::INFINITY, points: 500 }
+  ].freeze
+
+  def self.points_for_value(value)
+    POINT_TIERS.find { |tier| value <= tier[:max] }[:points]
+  end
+
   def self.call(game_session:, user:, coords:, ops:)
     new(game_session, user, coords, ops).call
   end
@@ -89,6 +110,7 @@ class ClaimService
         target["id"] => {
           "user_id" => @user.id,
           "value" => value,
+          "points" => self.class.points_for_value(value),
           "claimed_at" => Time.current.iso8601
         }
       )

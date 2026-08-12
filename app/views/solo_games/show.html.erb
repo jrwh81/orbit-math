@@ -11,7 +11,8 @@
 
   <% if @game_session.completed? %>
     <div class="completion-banner">
-      <p>Time's up! You claimed <%= @game_session.score_for(current_user) %> targets.</p>
+      <p>Time's up! You earned <%= @game_session.points_for(current_user) %> points
+        (<%= @game_session.targets_claimed_by(current_user) %> targets claimed).</p>
       <%= button_to "Play again", solo_games_path(difficulty: @game_session.puzzle.difficulty), class: "btn btn-primary" %>
     </div>
   <% end %>

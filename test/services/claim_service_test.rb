@@ -46,6 +46,63 @@ class ClaimServiceTest < ActiveSupport::TestCase
     end
   end
 
+  test "points_for_value follows the correct tier boundaries -- shared with the material tier visuals" do
+    # These breakpoints (10, 20, 50, 150) MUST match grid_controller.js's
+    # materialTierClass exactly, since the point value and the visual
+    # rarity (crystal/gold/emerald/platinum/diamond) are meant to always
+    # agree. Checked at every boundary, not just one value per tier.
+    assert_equal 25, ClaimService.points_for_value(1)
+    assert_equal 25, ClaimService.points_for_value(10)
+    assert_equal 50, ClaimService.points_for_value(11)
+    assert_equal 50, ClaimService.points_for_value(20)
+    assert_equal 100, ClaimService.points_for_value(21)
+    assert_equal 100, ClaimService.points_for_value(50)
+    assert_equal 250, ClaimService.points_for_value(51)
+    assert_equal 250, ClaimService.points_for_value(150)
+    assert_equal 500, ClaimService.points_for_value(151)
+    assert_equal 500, ClaimService.points_for_value(500)
+  end
+
+  test "a successful claim stores the correct tiered points on the claim record, not a flat difficulty rate" do
+    user = User.create!(username: "cs_points", password: "password123")
+    puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 45)
+    game_session = GameSession.create!(mode: :solo, status: :active, puzzle: puzzle, host: user)
+    game_session.participants.create!(user: user, player_number: 1)
+
+    target = game_session.active_targets.first
+    path = PuzzleSolver.find_path_for(game_session.active_grid, target["value"])
+    result = ClaimService.call(game_session: game_session, user: user, coords: path[:coords], ops: path[:ops])
+    assert result.success?
+
+    game_session.reload
+    stored_points = game_session.claims[target["id"]]["points"]
+    assert_equal ClaimService.points_for_value(target["value"]), stored_points
+    assert_equal stored_points, game_session.points_for(user)
+  end
+
+  test "claimed points always match one of the five real tiers, driven by the target's actual value" do
+    user = User.create!(username: "cs_varied_points", password: "password123")
+    puzzle = PuzzleGenerator.call(difficulty: "expert", seed: 46) # widest value range in the game
+    game_session = GameSession.create!(mode: :solo, status: :active, puzzle: puzzle, host: user)
+    game_session.participants.create!(user: user, player_number: 1)
+
+    5.times do
+      game_session.reload
+      target = game_session.active_targets.find { |t| PuzzleSolver.find_path_for(game_session.active_grid, t["value"]) }
+      break unless target
+
+      path = PuzzleSolver.find_path_for(game_session.active_grid, target["value"])
+      result = ClaimService.call(game_session: game_session, user: user, coords: path[:coords], ops: path[:ops])
+      next unless result.success?
+
+      game_session.reload
+      stored_points = game_session.claims[target["id"]]["points"]
+      assert_includes [25, 50, 100, 250, 500], stored_points
+      assert_equal ClaimService.points_for_value(target["value"]), stored_points,
+                   "claimed target worth #{target["value"]} should earn exactly #{ClaimService.points_for_value(target["value"])} points"
+    end
+  end
+
   test "every remaining active target stays solvable after many claims, even as cells regenerate and overlap" do
     # Beginner's small 4x4 board makes cell overlap between different
     # targets common, so this is exactly the scenario most likely to

@@ -17,17 +17,18 @@ class GameCompletionService
 
     @game_session.users.each do |user|
       stat = user.stat
-      claimed = @game_session.score_for(user)
+      claimed = @game_session.targets_claimed_by(user)
+      points = @game_session.points_for(user)
 
       stat.games_played += 1
       stat.targets_claimed += claimed
-      stat.total_score += claimed
+      stat.total_score += points
 
       if @game_session.solo?
         # Solo is a timed practice run, not pass/fail -- every completed
         # round counts as a "win" for streak/stat purposes; the real
         # measure of how you did is best_solo_score.
-        stat.best_solo_score = [stat.best_solo_score, claimed].max
+        stat.best_solo_score = [stat.best_solo_score, points].max
         stat.games_won += 1
       elsif winner && winner.id == user.id
         stat.games_won += 1

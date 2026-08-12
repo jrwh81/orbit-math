@@ -13,7 +13,7 @@ const DOUBLE_CLICK_MS = 320
 const AUTO_HOME_DELAY_MS = 6000
 
 export default class extends Controller {
-  static targets = ["grid", "targets", "scoreboard", "timer", "expression", "message", "completion", "popupLayer"]
+  static targets = ["grid", "targets", "scoreboard", "timer", "expression", "pointsTotal", "message", "completion", "popupLayer"]
   static values = {
     submitUrl: String,
     finishUrl: String,
@@ -176,6 +176,7 @@ export default class extends Controller {
 
     const players = this.stateValue.players || []
     const mine = (this.stateValue.summary || {})[this.currentUserIdValue] || {
+      points: 0,
       claims: this.stateValue.claims_count || 0,
       longest_chain: 0,
       highest_value: 0
@@ -188,9 +189,11 @@ export default class extends Controller {
       if (winnerId) {
         const winnerName = players.find((p) => p.user_id === winnerId)?.name || "Someone"
         const iWon = winnerId === this.currentUserIdValue
-        headline = iWon ? `Time's up -- you win! ${p1.score} - ${p2.score}` : `Time's up -- ${winnerName} wins. ${p1.score} - ${p2.score}`
+        headline = iWon
+          ? `Time's up -- you win! ${p1.points} - ${p2.points}`
+          : `Time's up -- ${winnerName} wins. ${p1.points} - ${p2.points}`
       } else {
-        headline = `Time's up -- it's a tie! ${p1.score} - ${p2.score}`
+        headline = `Time's up -- it's a tie! ${p1.points} - ${p2.points}`
       }
     } else {
       headline = "Time's up!"
@@ -201,6 +204,7 @@ export default class extends Controller {
         <div class="stats-modal">
           <h2>${headline}</h2>
           <ul class="stats-list">
+            <li><span class="stats-value">${mine.points}</span><span class="stats-label">points earned</span></li>
             <li><span class="stats-value">${mine.claims}</span><span class="stats-label">targets claimed</span></li>
             <li><span class="stats-value">${mine.longest_chain}</span><span class="stats-label">longest chain</span></li>
             <li><span class="stats-value">${mine.highest_value}</span><span class="stats-label">highest value claimed</span></li>
@@ -227,6 +231,7 @@ export default class extends Controller {
     this.renderScoreboard()
     this.renderTimer()
     this.renderExpression()
+    this.renderPointsTotal()
   }
 
   renderGrid() {
@@ -291,15 +296,27 @@ export default class extends Controller {
   // claimed it's gone, replaced by a fresh one. A brand-new id (one we
   // haven't rendered before) gets a "pop in" animation so the rotation
   // reads as a continuous flow rather than a silent swap.
+  //
+  // Each chip's material (crystal/gold/emerald/platinum/diamond) is
+  // derived purely from its value -- bigger numbers look rarer, the
+  // same way a mining game's loot table would read at a glance.
   renderTargets() {
     const html = (this.stateValue.targets || []).map((t) => {
-      const classes = ["target-chip"]
+      const classes = ["target-chip", this.materialTierClass(t.value)]
       if (this.justArrivedIds.includes(t.id)) classes.push("just-arrived")
       return `<span class="${classes.join(" ")}">${t.value}</span>`
     }).join("")
 
     this.targetsTarget.innerHTML = html
     this.justArrivedIds = [] // one-shot: don't replay the pop on the next unrelated render
+  }
+
+  materialTierClass(value) {
+    if (value <= 10) return "tier-crystal"
+    if (value <= 20) return "tier-gold"
+    if (value <= 50) return "tier-emerald"
+    if (value <= 150) return "tier-platinum"
+    return "tier-diamond"
   }
 
   renderScoreboard() {
@@ -311,7 +328,7 @@ export default class extends Controller {
 
     this.scoreboardTarget.innerHTML = players.map((p) => {
       const mine = p.user_id === this.currentUserIdValue ? " (you)" : ""
-      return `<span class="score-chip">${p.name}${mine}: <strong>${p.score}</strong></span>`
+      return `<span class="score-chip">${p.name}${mine}: <strong>${p.points} pts</strong></span>`
     }).join("")
   }
 
@@ -341,6 +358,19 @@ export default class extends Controller {
       str += ` ${op === "*" ? "\u00D7" : "+"} ${this.path[i + 1].value}`
     })
     this.expressionTarget.textContent = str
+  }
+
+  // Shown right next to the running expression: this player's current
+  // point total for the round so far (not a preview of what the
+  // in-progress chain would be worth -- that's what the expression
+  // itself already shows via its running math).
+  renderPointsTotal() {
+    if (!this.hasPointsTotalTarget) return
+
+    const players = this.stateValue.players || []
+    const mine = players.find((p) => p.user_id === this.currentUserIdValue)
+    const points = mine ? mine.points : 0
+    this.pointsTotalTarget.textContent = `${points} pts`
   }
 
   // ----------------------------------------------------------- interaction

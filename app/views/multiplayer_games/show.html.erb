@@ -42,8 +42,8 @@
         <% winner = @game_session.winner %>
         <p>
           <% if winner %>
-            <strong><%= winner.name %></strong> wins <%= @game_session.score_for(winner) %>
-            &ndash; <%= @game_session.score_for(@game_session.opponent_of(winner)) %>!
+            <strong><%= winner.name %></strong> wins <%= @game_session.points_for(winner) %>
+            &ndash; <%= @game_session.points_for(@game_session.opponent_of(winner)) %> points!
           <% else %>
             It's a tie!
           <% end %>

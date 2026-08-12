@@ -20,14 +20,28 @@ class GameSession < ApplicationRecord
   # every target ever claimed (for scoring), not a "which of the fixed
   # targets are done" tracker -- targets rotate out and get replaced
   # the instant they're claimed, so the board never runs dry mid-round.
-  # claims: { "t5" => { "user_id" => 3, "value" => 9, "claimed_at" => ... } }
+  # claims: { "t5" => { "user_id" => 3, "value" => 9, "points" => 100, "claimed_at" => ... } }
 
   def claimed_target_ids
     claims.keys
   end
 
-  def score_for(user)
+  # Raw count of targets this user has personally claimed this round --
+  # used for lifetime "targets claimed" stats. This is NOT the scoring/
+  # win-determining metric anymore -- see #points_for for that.
+  def targets_claimed_by(user)
     claims.values.count { |c| c["user_id"] == user.id }
+  end
+
+  # Total points earned this round -- the actual scoring and win-
+  # determining metric. Every claim's point value is stored directly on
+  # it at claim time, based on the target's own value, not the
+  # difficulty (see ClaimService.points_for_value), so this just sums
+  # what's already there rather than re-deriving it -- stays correct
+  # even if point tiers are ever tuned later, without silently
+  # rewriting the score of an already-finished round.
+  def points_for(user)
+    claims.values.select { |c| c["user_id"] == user.id }.sum { |c| c["points"] || 0 }
   end
 
   # ---- Timer -----------------------------------------------------------
@@ -47,15 +61,15 @@ class GameSession < ApplicationRecord
     [remaining.to_i, 0].max
   end
 
-  # Returns the user with the highest score, or nil for a tie (or if the
+  # Returns the user with the highest points, or nil for a tie (or if the
   # game isn't a completed multiplayer match). Deliberately NOT max_by,
   # which would silently pick a "winner" on a tie -- ties matter here.
   def winner
     return nil unless multiplayer? && completed?
 
-    grouped = users.group_by { |u| score_for(u) }
-    top_score = grouped.keys.max
-    contenders = grouped[top_score]
+    grouped = users.group_by { |u| points_for(u) }
+    top_points = grouped.keys.max
+    contenders = grouped[top_points]
 
     contenders.size == 1 ? contenders.first : nil
   end

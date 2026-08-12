@@ -31,13 +31,14 @@
   <div class="admin-table-wrap">
     <table class="admin-table">
       <thead>
-        <tr><th>Player</th><th>Score</th><th></th></tr>
+        <tr><th>Player</th><th>Points</th><th>Claims</th><th></th></tr>
       </thead>
       <tbody>
         <% @game_session.participants.includes(:user).order(:player_number).each do |p| %>
           <tr>
             <td><%= p.user.name %><%= " (host)" if p.user_id == @game_session.host_id %></td>
-            <td><%= @game_session.score_for(p.user) %></td>
+            <td><%= @game_session.points_for(p.user) %></td>
+            <td><%= @game_session.targets_claimed_by(p.user) %></td>
             <td><%= link_to "View player", admin_user_path(p.user) %></td>
           </tr>
         <% end %>

@@ -52,7 +52,7 @@ class AdminDataTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", admin_game_session_path(game_session)
   end
 
-  test "game session detail page shows real player scores and moves" do
+  test "game session detail page shows real player points and moves" do
     sign_in_as_admin
     player = User.create!(username: "score_player", password: "password123")
     puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 4)
@@ -65,7 +65,12 @@ class AdminDataTest < ActionDispatch::IntegrationTest
 
     get admin_game_session_path(game_session)
     assert_response :success
-    assert_select "td", text: "1" # score_for(player) should read 1 after that claim
+    # Points depend on the SPECIFIC target's value, not a flat rate per
+    # difficulty -- compute the expected value the same way the app
+    # does (ClaimService.points_for_value is the single source of truth)
+    # rather than hardcoding a number tied to what seed 4 happens to produce.
+    expected_points = ClaimService.points_for_value(target["value"])
+    assert_select "td", text: expected_points.to_s
   end
 
   test "an admin viewing a user's detail page sees THAT user's data, not their own -- guards against a variable mix-up" do

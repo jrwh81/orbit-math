@@ -38,7 +38,7 @@
     <div class="admin-table-wrap">
       <table class="admin-table">
         <thead>
-          <tr><th>ID</th><th>Mode</th><th>Difficulty</th><th>Status</th><th>Score</th><th>Created</th><th></th></tr>
+          <tr><th>ID</th><th>Mode</th><th>Difficulty</th><th>Status</th><th>Points</th><th>Created</th><th></th></tr>
         </thead>
         <tbody>
           <% @game_sessions.each do |g| %>
@@ -47,7 +47,7 @@
               <td><%= g.mode.capitalize %></td>
               <td><%= g.puzzle.difficulty_label %></td>
               <td><%= admin_status_badge(g.status) %></td>
-              <td><%= g.score_for(@user) %></td>
+              <td><%= g.points_for(@user) %></td>
               <td><%= g.created_at.strftime("%b %-d, %Y %l:%M%P") %></td>
               <td><%= link_to "View", admin_game_session_path(g) %></td>
             </tr>

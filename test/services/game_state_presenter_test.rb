@@ -32,7 +32,8 @@ class GameStatePresenterTest < ActiveSupport::TestCase
 
     my_summary = payload[:summary][user.id]
     refute_nil my_summary, "expected a summary entry keyed by the user's id"
-    assert_equal game_session.score_for(user), my_summary[:claims]
+    assert_equal game_session.targets_claimed_by(user), my_summary[:claims]
+    assert_equal game_session.points_for(user), my_summary[:points]
     assert_equal game_session.longest_chain_for(user), my_summary[:longest_chain]
     assert_equal game_session.highest_value_claimed_by(user), my_summary[:highest_value]
     assert my_summary[:longest_chain] >= 2, "every claim requires at least a 2-cell chain"

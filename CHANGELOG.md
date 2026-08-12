@@ -1,5 +1,78 @@
 # Changelog
 
+## v14 — grey meteors, value-tiered points, no more Submit/Clear buttons
+
+- **Meteors are now grey**, not blue-purple. New `--meteor-base/-light/-dark`
+  CSS variables dedicated to the grid (kept separate from `--bg-cell`,
+  which is still used elsewhere, so this doesn't ripple into other UI).
+  Crater contrast bumped up slightly since it needed to read clearly
+  against the lighter grey base.
+- **Real point-based scoring, corrected from an earlier wrong guess.**
+  First pass made points a flat rate per *difficulty* (Beginner 100,
+  Expert 1000) -- wrong. The actual request: points scale with the
+  *value of the specific target solved*, within any difficulty. Fixed
+  properly: `ClaimService.points_for_value(value)` now maps a target's
+  value to points via the same five tiers the material styling already
+  uses -- **Crystal (1-10) = 25pts, Gold (11-20) = 50pts, Emerald
+  (21-50) = 100pts, Platinum (51-150) = 250pts, Diamond (151+) =
+  500pts**. Points and visual rarity are now guaranteed to agree,
+  since they share one breakpoint list, tested directly (every
+  boundary value, not just one per tier).
+- **`GameSession#score_for` split into two clearly-named methods**:
+  `targets_claimed_by(user)` (raw count, for lifetime "targets claimed"
+  stats) and `points_for(user)` (the real scoring/win-determining
+  metric). `winner` now ranks by points. Every call site across the
+  app -- `GameCompletionService`, `GameStatePresenter`, both admin
+  views, both completion banners, seeds, the demo rake task -- updated
+  and swept for zero stale references.
+- **Removed the Submit/Clear buttons.** Auto-submit has handled every
+  case that matters since several versions back (a chain claims the
+  instant it matches, automatically); the buttons had no unique
+  capability left to justify keeping. Undo-one-step-at-a-time (click
+  the last cell again) still works without a dedicated Clear button.
+- **Live points total next to the equation**, as requested -- shows the
+  current player's running point total for the round, updating in real
+  time, positioned directly beside the expression readout.
+- New test coverage: every tier boundary value maps to the correct
+  points, a real claim stores the correct tiered (not flat) points on
+  its record, and a full round on Expert difficulty (widest value
+  range) confirms claimed points always land on one of the five real
+  tier values and match what the target's own value implies.
+
+## v13 — circular cratered asteroids + material tiers for targets
+
+- **Cells are now genuinely circular**, not the irregular blob shapes
+  from before. Craters are simulated with layered `radial-gradient`
+  "dents" (a highlight for the lit side, 3 darker dents at varying
+  positions/sizes) plus an inset box-shadow for subtle spherical
+  shading -- still no images, pure CSS. The five `data-shape` variants
+  (already assigned deterministically by grid position in
+  `grid_controller.js`) now vary crater *positions* instead of the
+  outer silhouette, so neighboring asteroids still read as distinct
+  despite all being circles.
+- **Target chips are now styled by material tier**, escalating with
+  value: **Crystal** (1-10, cyan gem), **Gold bar** (11-20), **Emerald**
+  (21-50, green gem), **Platinum** (51-150), **Diamond** (151+, glowing
+  white/rainbow gem). Tiers are computed client-side from the target's
+  value (`grid_controller.js#materialTierClass`) and applied as a CSS
+  class alongside the existing pop-in animation. Ranges are chosen to
+  span every difficulty's ceiling -- Beginner (max 20) only ever shows
+  crystals and gold, Expert (max 500) can show the full set -- so
+  harder difficulties naturally reveal rarer-looking loot, reinforcing
+  the difficulty curve visually, not just numerically.
+- The homepage's "How to Play" demo board picks up the new circular
+  cell styling automatically, since it reuses the same `.cell`/
+  `data-shape` markup as the real game -- no separate update needed there.
+
+## v12.1 — concurrency test fix
+
+Fixed `ClaimServiceConcurrencyTest` to check the right invariant: that
+the *specific* target being raced for can only be won once, rather than
+"only one success total" -- the latter could false-fail whenever the
+replacement target that rotates in after a win coincidentally shares
+the same value as what was just claimed, which is legitimate game
+behavior (duplicate target values are allowed by design), not a bug.
+
 ## v12 — "How to Play" section on the homepage
 
 - Added a **How to Play** section between the hero and the (login-gated)

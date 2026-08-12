@@ -50,7 +50,7 @@ namespace :demo do
     puts "\n-- (simulated) time's up --"
     GameCompletionService.call(game.reload)
 
-    puts "\nFinal score: #{p1.name} #{game.score_for(p1)} - #{game.score_for(p2)} #{p2.name}"
+    puts "\nFinal score: #{p1.name} #{game.points_for(p1)}pts - #{game.points_for(p2)}pts #{p2.name}"
     puts "Winner: #{game.winner&.name || "tie"}"
     puts "Status: #{game.status}"
     puts "\n#{p1.name} stats: #{p1.stat.reload.attributes.slice("games_played", "games_won", "targets_claimed")}"

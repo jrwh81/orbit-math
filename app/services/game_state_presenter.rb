@@ -41,7 +41,8 @@ class GameStatePresenter
         user_id: p.user_id,
         name: p.user.name,
         player_number: p.player_number,
-        score: @game_session.score_for(p.user)
+        points: @game_session.points_for(p.user),
+        claims: @game_session.targets_claimed_by(p.user)
       }
     end
   end
@@ -52,7 +53,8 @@ class GameStatePresenter
   def summary_json
     @game_session.users.each_with_object({}) do |user, acc|
       acc[user.id] = {
-        claims: @game_session.score_for(user),
+        points: @game_session.points_for(user),
+        claims: @game_session.targets_claimed_by(user),
         longest_chain: @game_session.longest_chain_for(user),
         highest_value: @game_session.highest_value_claimed_by(user)
       }
