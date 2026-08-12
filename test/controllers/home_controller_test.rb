@@ -87,4 +87,30 @@ class HomeControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", solo_game_path(ongoing), text: "Open"
     assert_select "a[href=?]", solo_game_path(finished), count: 0
   end
+
+  test "regression: game history shows every game, not just the 5 most recent" do
+    # This is the exact bug reported: a player with more than 5 games
+    # couldn't see anything past their 5 most recent, silently hiding
+    # real history rather than paginating it or making that limit visible.
+    player = User.create!(username: "history_full", password: "password123")
+
+    game_sessions = 7.times.map do |i|
+      puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 200 + i)
+      g = GameSession.create!(mode: :solo, status: :active, puzzle: puzzle, host: player)
+      g.participants.create!(user: player, player_number: 1)
+      GameCompletionService.call(g)
+      g
+    end
+
+    post login_path, params: { username: player.username, password: "password123" }
+    get root_path
+
+    assert_response :success
+    # All 7 should be reachable via their unique difficulty badges/ids --
+    # simplest robust check is that all 7 game ids appear as data on the
+    # page somewhere (e.g. the completed games' "Open" links are gone,
+    # but the games themselves -- via their difficulty_label/points rows --
+    # should each still render one <li> per game).
+    assert_select ".game-list-scroll .game-list li", count: game_sessions.size
+  end
 end

@@ -1,5 +1,27 @@
 # Changelog
 
+## v14.5 — game history shows every game, not just the last 5
+
+The actual bug behind "my friend's games aren't showing up": `@recent_games`
+was capped at `.limit(5)`, silently hiding anything past a player's 5
+most recent games. Not related to the scoring-version change at all --
+old games were always still there, just hidden past the cutoff.
+
+- Removed the limit entirely -- shows full game history now. The
+  existing `.game-list-scroll` container (added in v14.4, contained
+  scroll) already handles a long list without breaking page layout, so
+  this didn't need pagination to be usable.
+- Renamed the section from "Recent games" to **"Game history"**, since
+  the old name was part of what caused the confusion -- "recent"
+  implied a deliberately limited slice, which is exactly what it was,
+  silently.
+- New regression test: a player with 7 completed games sees all 7 in
+  their history, not 5.
+
+Worth knowing: if this list grows large for a very active player,
+real pagination is the next step -- "show everything" was the
+explicit, deliberate choice for now, not a permanent architecture decision.
+
 ## v14.4 — actually fixed the homepage's Open multiplayer games overflow
 
 v14.3's `.game-list` flex-wrap fix was aimed at the wrong root cause.
