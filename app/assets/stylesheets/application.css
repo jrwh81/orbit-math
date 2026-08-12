@@ -148,6 +148,25 @@ a:hover { text-decoration: underline; }
 
 .auth-form { max-width: 380px; margin: 0 auto; }
 .auth-form h1 { text-align: center; }
+
+.oauth-buttons { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.btn-oauth {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 11px 16px; font-weight: 600; font-size: 0.95rem;
+}
+.oauth-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%; font-weight: 800; font-size: 0.8rem;
+  background: #fff; color: #051019; flex-shrink: 0;
+}
+.btn-oauth-google { border-color: #4285f4; }
+.btn-oauth-google .oauth-icon { color: #4285f4; }
+.btn-oauth-facebook { border-color: #1877f2; }
+.btn-oauth-facebook .oauth-icon { color: #1877f2; }
+
+.auth-divider { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; color: var(--muted); font-size: 0.8rem; }
+.auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
 .field { margin-bottom: 14px; display: flex; flex-direction: column; gap: 4px; }
 .field-note { margin-top: -6px; margin-bottom: 16px; font-size: 0.78rem; }
 .field label { font-size: 0.85rem; color: var(--muted); }

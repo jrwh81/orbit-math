@@ -3,6 +3,8 @@
 <section class="auth-form">
   <h1>Create your account</h1>
 
+  <%= render "shared/oauth_buttons" %>
+
   <% if @user.errors.any? %>
     <div class="form-errors">
       <ul>

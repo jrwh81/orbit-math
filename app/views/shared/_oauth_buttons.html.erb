@@ -1,0 +1,11 @@
+<div class="oauth-buttons">
+  <%= button_to "/auth/google_oauth2", method: :post, class: "btn btn-oauth btn-oauth-google", data: { turbo: false } do %>
+    <span class="oauth-icon" aria-hidden="true">G</span> Continue with Google
+  <% end %>
+
+  <%= button_to "/auth/facebook", method: :post, class: "btn btn-oauth btn-oauth-facebook", data: { turbo: false } do %>
+    <span class="oauth-icon" aria-hidden="true">f</span> Continue with Facebook
+  <% end %>
+</div>
+
+<div class="auth-divider"><span>or</span></div>

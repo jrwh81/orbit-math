@@ -7,6 +7,19 @@ Rails.application.routes.draw do
   post "login",  to: "sessions#create"
   delete "logout", to: "sessions#destroy"
 
+  # OmniAuth: GET here is the request phase (redirects to Google/Facebook),
+  # handled entirely by the omniauth gem's middleware -- no controller
+  # action needed for it. This route just gives Rails' router (and
+  # button_to in the views) a named path to point at.
+  get "/auth/:provider/callback", to: "omniauth_callbacks#create"
+  get "/auth/failure", to: "omniauth_callbacks#failure"
+
+  # After a brand-new OAuth sign-in with no existing account to match,
+  # the user picks a username here before an account is actually created
+  # -- see OmniauthCallbacksController for why this step can't be skipped.
+  get  "signup/finish", to: "omniauth_registrations#new", as: :finish_oauth_signup
+  post "signup/finish", to: "omniauth_registrations#create"
+
   # Single player
   resources :solo_games, only: [:new, :create, :show] do
     member { post :finish }

@@ -1,0 +1,30 @@
+<% content_for :title, "Choose a username" %>
+
+<section class="auth-form">
+  <h1>Almost done!</h1>
+  <p class="muted">
+    Signed in as <%= @user.first_name %> <%= @user.last_name %>
+    <% if @user.email.present? %>(<%= @user.email %>)<% end %>.
+    Pick a username to finish &mdash; it's the only thing other players
+    will ever see, so choose something you're happy with.
+  </p>
+
+  <% if @user.errors.any? %>
+    <div class="form-errors">
+      <ul>
+        <% @user.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <%= form_with model: @user, url: finish_oauth_signup_path, method: :post do |f| %>
+    <div class="field">
+      <%= f.label :username %>
+      <%= f.text_field :username, autofocus: true, autocomplete: "username", required: true %>
+    </div>
+
+    <%= f.submit "Finish sign up", class: "btn btn-primary" %>
+  <% end %>
+</section>

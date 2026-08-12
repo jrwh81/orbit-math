@@ -1,5 +1,10 @@
 class User < ApplicationRecord
-  has_secure_password
+  # Validations disabled here on purpose -- has_secure_password's default
+  # validation requires a password on every create, which would block
+  # every OAuth-only account (Google/Facebook sign-ins never set one).
+  # The presence requirement is reimplemented below, scoped to only
+  # apply when there's no OAuth provider linked.
+  has_secure_password validations: false
 
   has_many :participants, dependent: :destroy
   has_many :game_sessions, through: :participants
@@ -12,6 +17,10 @@ class User < ApplicationRecord
   validates :email, uniqueness: { case_sensitive: false }, allow_blank: true,
                      format: { with: URI::MailTo::EMAIL_REGEXP }, if: -> { email.present? }
   validates :password, length: { minimum: 6 }, allow_nil: true
+  validates :password, confirmation: true # Rails skips this automatically when no confirmation was submitted
+  # Only a traditional (non-OAuth) signup ever needs a password at all.
+  validates :password, presence: true, on: :signup, if: -> { provider.blank? }
+  validates :uid, uniqueness: { scope: :provider }, allow_nil: true
 
   # These only apply when a User is saved with the :signup validation
   # context (see RegistrationsController), NOT on ordinary .create!/.save
@@ -27,6 +36,31 @@ class User < ApplicationRecord
 
   before_save { self.username = username.downcase if username.present? }
   after_create :ensure_user_stat!
+
+  # Finds a user by an already-linked OAuth identity, or by matching
+  # email (linking that identity to the existing account rather than
+  # creating a duplicate -- e.g. someone who signed up the traditional
+  # way before now signing in with Google using the same address).
+  # Returns nil when neither matches -- the caller's job to then route
+  # to the username-completion step, since a brand new OAuth account
+  # still needs one (see the design note in OmniauthCallbacksController).
+  def self.from_omniauth(auth)
+    user = find_by(provider: auth.provider, uid: auth.uid)
+    return user if user
+
+    email = auth.info&.email
+    return nil if email.blank?
+
+    existing = find_by(email: email)
+    return nil unless existing
+
+    existing.update!(provider: auth.provider, uid: auth.uid)
+    existing
+  end
+
+  def oauth_account?
+    provider.present?
+  end
 
   # The ONLY name ever shown to other players -- leaderboard, in-game
   # scoreboard, "hosted by" labels, nav bar, everywhere. Deliberately

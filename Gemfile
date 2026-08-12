@@ -16,6 +16,10 @@ gem "propshaft"
 
 # Auth
 gem "bcrypt", "~> 3.1.7"
+gem "omniauth", "~> 2.1"
+gem "omniauth-google-oauth2", "~> 1.1"
+gem "omniauth-facebook", "~> 9.0"
+gem "omniauth-rails_csrf_protection", "~> 1.0" # required by OmniAuth 2.x: makes the request phase POST-only, CSRF-safe
 
 # JSON builder for API-ish responses (moves endpoint)
 gem "jbuilder"

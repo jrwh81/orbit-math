@@ -1,5 +1,62 @@
 # Changelog
 
+## v15 — sign in with Google / Facebook
+
+New gem dependencies this time (`omniauth`, `omniauth-google-oauth2`,
+`omniauth-facebook`, `omniauth-rails_csrf_protection`) -- can't verify
+these resolve cleanly against Rails 7.1.6 without running bundler
+myself, same caveat as always. Much narrower dependency footprint than
+something like the ActiveAdmin gem would have been, but still real risk
+worth naming.
+
+- **"Continue with Google" / "Continue with Facebook" buttons** on both
+  the login and signup pages (shared partial, `shared/_oauth_buttons`).
+  Buttons are `button_to` (POST), not plain links, and marked
+  `data-turbo: false` -- both required for the OAuth redirect chain to
+  work correctly (CSRF protection needs POST for the request phase;
+  Turbo's fetch-based navigation would break the full-page redirect to
+  Google/Facebook otherwise).
+- **New `provider`/`uid` columns on `users`**, plus `password_digest`
+  relaxed from `NOT NULL` -- OAuth-only accounts never set a password.
+  `has_secure_password validations: false` disables its built-in
+  presence check accordingly; a new context-scoped validation
+  (`on: :signup, if: -> { provider.blank? }`) requires a password only
+  for traditional signups. Password-confirmation matching, which
+  `has_secure_password`'s disabled validations also would have covered,
+  is reimplemented explicitly (`validates :password, confirmation: true`)
+  so that didn't silently regress.
+- **`User.from_omniauth(auth)`**: finds an already-linked account by
+  provider+uid, or links a new OAuth identity to an existing account
+  with a matching email (someone who signed up traditionally before,
+  now trying Google) rather than creating a duplicate. Returns `nil`
+  for a genuinely new sign-in.
+- **Username-completion step for brand-new sign-ins.** This app's whole
+  design keeps the username as the only thing ever shown to other
+  players (see `User#name`) -- can't skip that just because OAuth
+  handed us a real name and email. A new sign-in lands on a one-field
+  form (`OmniauthRegistrationsController`) pre-filled with the
+  provider's real name/email (stashed server-side in
+  `session[:pending_oauth]`, never trusted from a hidden form field),
+  asking only for a username before the account actually gets created.
+- **`OAUTH.md`**: the external setup walkthrough for both providers --
+  Google Cloud Console and Meta for Developers, including the two
+  redirect URIs each provider needs (`localhost` + `orbit-math.us`),
+  and an honest heads-up that Facebook's path to public (non-Development-mode)
+  access typically needs Meta's App Review, which Google's equivalent
+  doesn't.
+- Real test coverage: `User.from_omniauth`'s three branches (linked
+  account, email-linking, brand new) plus the "no email" edge case;
+  password validation correctly required/skipped based on OAuth status;
+  password-confirmation mismatch still caught after disabling
+  `has_secure_password`'s own checks; `uid` uniqueness correctly scoped
+  per-provider, not global; the full callback flow end-to-end via
+  OmniAuth's test mode (existing linked user logs in directly, matching
+  email links rather than duplicates, brand new redirects to the
+  username step with zero account created yet); and the username step
+  itself (pre-fill correctness, successful completion, validation
+  errors, duplicate username rejection) -- 20+ new test cases in total
+  across three new test files.
+
 ## v14.6 — "All games": actually site-wide this time
 
 v14.5's "show every game" was still wrong -- it removed the 5-game cap
