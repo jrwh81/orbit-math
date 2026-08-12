@@ -1,5 +1,15 @@
 # Changelog
 
+## v14.1 — live expression shows the running total, not just the popup
+
+The live equation display (above the grid, while building a chain) only
+ever showed the running math itself -- "6 x 7" -- never the computed
+total until after claiming, when the floating popup would show it. Now
+it shows the full equation live: "6 x 7 = 42", "1 x 3 + 8 = 24", etc.,
+the moment there's at least one link to actually compute. Reuses the
+same `currentChainValue()` the auto-submit match-check already relies
+on, so there's no new logic, just a new place it's also displayed.
+
 ## v14 — grey meteors, value-tiered points, no more Submit/Clear buttons
 
 - **Meteors are now grey**, not blue-purple. New `--meteor-base/-light/-dark`

@@ -357,6 +357,14 @@ export default class extends Controller {
     this.ops.forEach((op, i) => {
       str += ` ${op === "*" ? "\u00D7" : "+"} ${this.path[i + 1].value}`
     })
+
+    // Show the running total live as the chain is built, not just in the
+    // floating popup after a claim -- e.g. "6 x 7" becomes "6 x 7 = 42"
+    // the moment there's at least one link to actually compute.
+    if (this.ops.length > 0) {
+      str += ` = ${this.currentChainValue()}`
+    }
+
     this.expressionTarget.textContent = str
   }
 
