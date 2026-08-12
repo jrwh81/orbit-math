@@ -1,5 +1,69 @@
 # Changelog
 
+## v14.4 — actually fixed the homepage's Open multiplayer games overflow
+
+v14.3's `.game-list` flex-wrap fix was aimed at the wrong root cause.
+The real problem: "Open multiplayer games" and "Recent games" sit in a
+3-column dashboard grid, squeezing each card to roughly a third of the
+page width (~300px) -- genuinely too narrow for a row like "hosted by
+username · code ABCDEF · [badge] [Join button]" to fit comfortably no
+matter how it wraps.
+
+- **`.card-wide`**: both cards now span the full width of the dashboard
+  row instead of competing for a third of it alongside "Your stats" --
+  this is the actual "widen it" fix.
+- **`.game-list-scroll`**: a contained scroll area (max-height 320px,
+  scrolls both directions) wrapping each list, as a fallback for a
+  long username or many open games even at full card width -- the
+  "horizontal and vertical scroll bar" half of the original suggestion,
+  which v14.3 hadn't actually added anywhere on the homepage.
+
+## v14.3 — Recent games shows the actual player, admin tables get proper scroll
+
+- **Recent games now explicitly shows the player's own username**, not
+  just the opponent for multiplayer or nothing at all for solo. Reads
+  as "yourname vs opponentname · Beginner · 150 pts" or "yourname ·
+  Solo run · Beginner · 100 pts" now.
+- **Admin tables now scroll both directions, contained.** `.admin-main`
+  widened from 960px (inherited from the normal site width) to 1400px
+  -- admin tables have a lot more columns than anything else in the app
+  and were forced into horizontal scroll far more often than necessary.
+  `.admin-table-wrap` now caps height at `70vh` with its own vertical
+  scroll (previously the whole page just grew indefinitely for a
+  200-row table) and keeps horizontal scroll for narrow viewports. The
+  header row is now `position: sticky` within that scroll area, so
+  column labels stay visible while scrolling a long table instead of
+  scrolling out of view immediately.
+- Also hardened `.game-list` (used by the homepage's Recent
+  games/Open games and the multiplayer lobby) against the same class of
+  overflow: rows now wrap (`flex-wrap: wrap`) instead of forcing
+  horizontal scroll when a row's content (username + difficulty badge +
+  points + Open link) doesn't fit on one line on a narrow screen.
+- New/updated test coverage: both the player's and opponent's usernames
+  are asserted present for multiplayer, and a dedicated test confirms
+  the player's username shows for solo runs too (previously untested,
+  and the exact gap that let the missing-username issue slip through).
+
+## v14.2 — Recent games shows who/points/difficulty, no more opening finished games
+
+- **"Recent games" now shows the opponent's username** (multiplayer) or
+  "Solo run", the **difficulty badge**, and **points earned** -- replaces
+  the old raw `mode · status` line, which told you nothing useful at a
+  glance.
+- **Removed the "Open" link for completed games.** There was never a
+  real reason to reopen a finished round -- rounds are short (60-150s)
+  and always resolve via the timer, so in practice every entry in this
+  list was already done. The link now only appears for a game that's
+  genuinely still in progress (an edge case, e.g. a multiplayer game
+  stuck waiting on an opponent), not the common case.
+- Fixed a latent N+1 query risk while in there: `HomeController` now
+  eager-loads `puzzle` and `participants: :user` for recent games (and
+  `puzzle`/`host` for open games), so rendering the list doesn't fire a
+  fresh query per game for difficulty labels and opponent lookups.
+- New test coverage: the opponent's username, points, and difficulty
+  actually render correctly for a real claimed game, and a completed
+  game has no Open link while an in-progress one still does.
+
 ## v14.1 — live expression shows the running total, not just the popup
 
 The live equation display (above the grid, while building a chain) only
