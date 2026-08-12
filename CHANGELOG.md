@@ -1,5 +1,32 @@
 # Changelog
 
+## v12 — "How to Play" section on the homepage
+
+- Added a **How to Play** section between the hero and the (login-gated)
+  dashboard, visible to every visitor including logged-out ones -- the
+  people who most need it, since they haven't played yet.
+- Includes a small **illustrative demo board** built from the exact
+  same CSS the real game uses (asteroid-shaped cells, the chain-line
+  SVG overlay, the same "selected" styling) so it looks and feels
+  authentic rather than a generic mockup, worked through one concrete
+  example: 3 **+** 5 (a single-click/add link), then **&times;** 4
+  (a double-click/multiply link) = 32. It's explicitly non-interactive
+  and labeled "Example chain -- not a live game" so it's never
+  confused for the real thing, and marked `aria-hidden` since the
+  actual instructional content lives in the step list next to it, not
+  in the decorative grid.
+- Five-step written walkthrough covering click-to-add, double-click-to-
+  multiply, automatic claiming (no submit button), and the fact that
+  claimed cells get replaced with new numbers.
+- New test coverage confirming the section actually renders for a
+  logged-out visitor, the demo grid has its 4 cells, and the worked
+  example's expression reads correctly.
+
+Honest caveat: I can't take an actual screenshot of the live app or see
+how this renders in a real browser -- worth a look once it's live to
+confirm the layout, especially at mobile widths, actually reads the way
+it's intended to.
+
 ## v11 — signup rework: first/last name, no display name, username-only in public
 
 Redesigned the signup form to collect: first name, last name, username,

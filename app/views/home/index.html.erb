@@ -19,6 +19,43 @@
   </div>
 </section>
 
+<section class="how-to-play">
+  <h2>How to Play</h2>
+
+  <div class="how-to-content">
+    <div class="demo-board" aria-hidden="true">
+      <div class="grid-stage">
+        <div class="grid">
+          <svg class="chain-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <line class="chain-line chain-line-add" x1="25" y1="25" x2="75" y2="25"></line>
+            <line class="chain-line chain-line-multiply" x1="75" y1="25" x2="75" y2="75"></line>
+          </svg>
+          <div class="grid-rows">
+            <div class="grid-row">
+              <div class="cell selected" data-shape="0"><span class="cell-value">3</span><span class="cell-order">1</span></div>
+              <div class="cell selected" data-shape="1"><span class="cell-value">5</span><span class="cell-order">2</span></div>
+            </div>
+            <div class="grid-row">
+              <div class="cell" data-shape="2"><span class="cell-value">7</span></div>
+              <div class="cell selected" data-shape="3"><span class="cell-value">4</span><span class="cell-order">3</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="demo-expression">3 + 5 &times; 4 = 32</div>
+      <p class="demo-caption">Example chain &mdash; not a live game</p>
+    </div>
+
+    <ol class="how-to-steps">
+      <li><strong>Click</strong> an asteroid to start a chain.</li>
+      <li><strong>Click</strong> a neighboring asteroid to <strong>add</strong> it &mdash; like 3 &rarr; 5 above.</li>
+      <li><strong>Double-click</strong> a neighboring asteroid to <strong>multiply</strong> instead &mdash; like 5 &rarr; 4 above.</li>
+      <li>Match a cargo target below the grid and it's claimed <strong>automatically</strong> &mdash; no submit button needed.</li>
+      <li>Claimed numbers get replaced with fresh ones. Chain as many as you can before time runs out!</li>
+    </ol>
+  </div>
+</section>
+
 <% if logged_in? %>
   <section class="dashboard">
     <div class="card">

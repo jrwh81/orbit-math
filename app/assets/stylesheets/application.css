@@ -99,6 +99,21 @@ a:hover { text-decoration: underline; }
 }
 .card h2 { margin-top: 0; font-size: 1.1rem; }
 
+.how-to-play { max-width: 780px; margin: 20px auto 40px; padding: 0 4px; }
+.how-to-play h2 { text-align: center; margin-bottom: 24px; }
+.how-to-content { display: flex; gap: 36px; align-items: center; justify-content: center; flex-wrap: wrap; }
+
+.demo-board { width: 190px; flex-shrink: 0; }
+.demo-board .grid { padding: 8px; }
+.demo-board .cell-value { font-size: 1.35rem; }
+.demo-board .cell-order { width: 15px; height: 15px; font-size: 0.6rem; }
+.demo-expression { text-align: center; margin-top: 10px; font-weight: 700; color: var(--accent); font-size: 0.95rem; }
+.demo-caption { text-align: center; margin: 4px 0 0; font-size: 0.72rem; color: var(--muted); font-style: italic; }
+
+.how-to-steps { flex: 1 1 260px; min-width: 240px; max-width: 380px; margin: 0; padding-left: 22px; color: var(--text); line-height: 1.8; }
+.how-to-steps li { margin-bottom: 8px; }
+.how-to-steps strong { color: var(--accent-2); }
+
 .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
 .lobby-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 20px; }
 
