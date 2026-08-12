@@ -90,4 +90,24 @@ class AdminDataTest < ActionDispatch::IntegrationTest
     # prove the page is scoped to the requested user, not the admin's own.
     assert_select ".muted", text: /#{Regexp.escape(other.full_name)}/
   end
+
+  test "users index shows the correct sign-in badge for a Google account vs a traditional one" do
+    sign_in_as_admin
+    User.create!(username: "google_signed_up", provider: "google_oauth2", uid: "some-uid", email: "googley@example.com")
+    User.create!(username: "password_signed_up", password: "password123")
+
+    get admin_users_path
+    assert_response :success
+    assert_select ".admin-badge-google", text: "Google"
+    assert_select ".admin-badge-password", text: "Password"
+  end
+
+  test "user detail page header shows the Google badge for an OAuth account" do
+    sign_in_as_admin
+    google_user = User.create!(username: "google_detail_check", provider: "google_oauth2", uid: "another-uid")
+
+    get admin_user_path(google_user)
+    assert_response :success
+    assert_select "h1 .admin-badge-google", text: "Google"
+  end
 end

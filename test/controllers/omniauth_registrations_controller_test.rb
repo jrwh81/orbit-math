@@ -26,7 +26,8 @@ class OmniauthRegistrationsControllerTest < ActionDispatch::IntegrationTest
     sign_in_with_pending_oauth
 
     get finish_oauth_signup_path
-    assert_response :success# Rails omits the value attribute entirely for a nil field rather
+    assert_response :success
+    # Rails omits the value attribute entirely for a nil field rather
     # than rendering value="" -- just confirm the empty, ready-to-fill
     # username input is present, not a specific value attribute.
     assert_select "input[name=?]", "user[username]"

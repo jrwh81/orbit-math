@@ -504,5 +504,8 @@ a:hover { text-decoration: underline; }
 .admin-badge-active { color: var(--success); border: 1px solid var(--success); }
 .admin-badge-waiting { color: var(--muted); border: 1px solid var(--border); }
 .admin-badge-completed { color: var(--accent); border: 1px solid var(--accent); }
+.admin-badge-google { color: #4285f4; border: 1px solid #4285f4; }
+.admin-badge-facebook { color: #1877f2; border: 1px solid #1877f2; }
+.admin-badge-password { color: var(--muted); border: 1px solid var(--border); }
 
 .admin-back-link { display: inline-block; margin-bottom: 16px; font-size: 0.85rem; }

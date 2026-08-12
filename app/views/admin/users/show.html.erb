@@ -2,7 +2,7 @@
 
 <%= link_to "\u2190 All users", admin_users_path, class: "admin-back-link" %>
 
-<h1>@<%= @user.username %> <%= "(admin)".html_safe if @user.admin? %></h1>
+<h1>@<%= @user.username %> <%= "(admin)".html_safe if @user.admin? %> <%= oauth_provider_badge(@user) %></h1>
 <p class="muted">
   <% if @user.full_name %>
     <%= @user.full_name %> &middot;

@@ -1,5 +1,45 @@
 # Changelog
 
+## v15.2 — hide "Continue with Facebook" from the public until App Review is done
+
+Facebook sign-in works correctly (verified for the app owner and any
+Business Manager tester), but the app isn't through Meta's Business/App
+Review yet -- meaning any visitor who ISN'T a tester and clicks the
+button hits a dead-end error straight from Facebook. That's a confusing
+experience for a random visitor and easily reads as "this app is
+broken" rather than a Facebook permissions issue.
+
+- **New `FACEBOOK_LOGIN_PUBLIC` env var** (default `false`/hidden).
+  Controls only the button's *visibility* on the login/signup pages --
+  the credentials themselves stay fully configured and working either
+  way, so testers can still use it directly. Reads live via `ENV` at
+  render time (not baked into boot-time config), so it's a one-line
+  env var flip + restart to turn back on, no code changes.
+- Google's button always shows regardless -- it's fully live for
+  anyone since publishing that consent screen didn't require the same
+  Business Verification friction Facebook's did.
+- `OAUTH.md` updated with what was actually learned trying to get
+  Facebook out of Development mode: Meta's Business Verification
+  requires real legal business documents, and the "simpler,
+  ID-only Individual verification" path documented for solo developers
+  did not actually appear as an option in practice for this account --
+  worth knowing before investing more time there without a registered
+  business entity.
+- New test coverage: the Facebook button is hidden by default on both
+  login and signup, Google's is always present, and the button
+  correctly reappears on both pages once the env var is explicitly set.
+
+## v15.1 — sign-in method visible in the admin panel
+
+- **New `oauth_provider_badge(user)` admin helper**, showing a small
+  colored badge — **Google**, **Facebook**, or **Password** — wherever
+  a user shows up in the admin panel: the users index, the user detail
+  page header, and the dashboard's "Recent signups" table. No more
+  dropping into the Rails console to check whether an account is
+  OAuth-linked.
+- New test coverage confirming the correct badge renders for both an
+  OAuth account and a traditional one, on both the index and detail pages.
+
 ## v15 — sign in with Google / Facebook
 
 New gem dependencies this time (`omniauth`, `omniauth-google-oauth2`,

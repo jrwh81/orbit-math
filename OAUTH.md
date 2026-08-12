@@ -55,12 +55,36 @@ to authorize) that only you can make.
 4. **App Settings → Basic** — copy your **App ID** and **App Secret**.
 5. **App Mode**: new Facebook apps start in **Development mode**, where
    only you (the app's admin/developers/testers, added under **App
-   roles**) can actually log in with it. Switching to **Live** mode for
-   real public use typically requires Meta's **App Review** for the
-   `email` permission specifically — this can take some time and isn't
-   instant like Google's. Budget for this being the slower half of the
-   two to fully launch; Development mode is enough for you and a friend
-   to test with in the meantime.
+   roles**, or via Business Manager → People if your app is tied to a
+   Business Portfolio) can actually log in with it.
+
+## Reality check on going Live with Facebook (learned the hard way)
+
+Getting Facebook out of Development mode turned out to be real, possibly
+significant friction, worth knowing about before you invest time:
+
+- Meta requires **Business Verification** before an app can be used by
+  the general public, not just testers -- this needs actual legal
+  business documents (incorporation certificate, business tax
+  documents, etc.). If you don't have a registered business entity,
+  this isn't just paperwork friction, it can be a genuine dead end.
+- There's supposedly a simpler **Individual/Admin verification** path
+  (just a government ID) documented for solo developers without a
+  registered business -- but it did **not** actually appear as an
+  option in practice; the Business Portfolio verification flow only
+  offered the full document-based path.
+- If your Business Portfolio (Business Manager account) has no legal
+  business name, address, or phone on file, that's exactly why it asks
+  for documents -- it's treating the request as full business
+  verification with no alternative offered.
+
+**Current decision for this app**: staying in Development mode.
+Facebook sign-in works fully for the app owner and anyone explicitly
+added as a Business Manager tester; the "Continue with Facebook" button
+is hidden from public view (see `FACEBOOK_LOGIN_PUBLIC` below) so a
+random visitor without tester access never hits Facebook's dead-end
+error. Google and traditional signup handle everyone else. Revisit this
+if/when a registered business entity exists.
 
 ## Setting the credentials
 
@@ -71,6 +95,7 @@ GOOGLE_CLIENT_ID=your-client-id-here
 GOOGLE_CLIENT_SECRET=your-client-secret-here
 FACEBOOK_APP_ID=your-app-id-here
 FACEBOOK_APP_SECRET=your-app-secret-here
+FACEBOOK_LOGIN_PUBLIC=false
 ```
 
 **On Heroku**:
@@ -80,15 +105,23 @@ heroku config:set GOOGLE_CLIENT_ID=your-client-id-here
 heroku config:set GOOGLE_CLIENT_SECRET=your-client-secret-here
 heroku config:set FACEBOOK_APP_ID=your-app-id-here
 heroku config:set FACEBOOK_APP_SECRET=your-app-secret-here
+heroku config:set FACEBOOK_LOGIN_PUBLIC=false
 ```
+
+`FACEBOOK_LOGIN_PUBLIC` controls whether the "Continue with Facebook"
+button shows up for every visitor (`true`) or stays hidden from
+everyone except people who navigate to it directly (`false`, the
+default). The Facebook credentials themselves stay fully configured and
+working either way -- this only controls the button's visibility.
+Flip it to `true` (and restart the app) once Facebook sign-in is
+actually out of Development mode.
 
 ## Testing it
 
 Once credentials are set (even just Google, if you're doing these one
 at a time), restart `bin/dev` and visit `/login` or `/signup` — you
-should see "Continue with Google" and "Continue with Facebook" buttons.
-Clicking one you haven't configured credentials for yet will error —
-that's expected until you've done that provider's setup above.
+should see a "Continue with Google" button always, and "Continue with
+Facebook" only if `FACEBOOK_LOGIN_PUBLIC=true`.
 
 If a provider isn't configured (env vars blank), OmniAuth will still
 attempt the request and fail at Google/Facebook's side with an

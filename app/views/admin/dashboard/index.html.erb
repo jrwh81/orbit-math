@@ -75,7 +75,7 @@
   <div class="admin-table-wrap">
     <table class="admin-table">
       <thead>
-        <tr><th>Username</th><th>Full name</th><th>Email</th><th>Joined</th><th></th></tr>
+        <tr><th>Username</th><th>Full name</th><th>Email</th><th>Sign-in</th><th>Joined</th><th></th></tr>
       </thead>
       <tbody>
         <% @recent_users.each do |u| %>
@@ -83,6 +83,7 @@
             <td><%= u.username %> <%= "(admin)".html_safe if u.admin? %></td>
             <td><%= u.full_name || "—" %></td>
             <td><%= u.email.presence || "—" %></td>
+            <td><%= oauth_provider_badge(u) %></td>
             <td><%= u.created_at.strftime("%b %-d, %Y") %></td>
             <td><%= link_to "View", admin_user_path(u) %></td>
           </tr>

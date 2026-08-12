@@ -3,8 +3,10 @@
     <span class="oauth-icon" aria-hidden="true">G</span> Continue with Google
   <% end %>
 
-  <%= button_to "/auth/facebook", method: :post, class: "btn btn-oauth btn-oauth-facebook", data: { turbo: false } do %>
-    <span class="oauth-icon" aria-hidden="true">f</span> Continue with Facebook
+  <% if facebook_login_public? %>
+    <%= button_to "/auth/facebook", method: :post, class: "btn btn-oauth btn-oauth-facebook", data: { turbo: false } do %>
+      <span class="oauth-icon" aria-hidden="true">f</span> Continue with Facebook
+    <% end %>
   <% end %>
 </div>
 

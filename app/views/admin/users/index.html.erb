@@ -6,7 +6,7 @@
   <table class="admin-table">
     <thead>
       <tr>
-        <th>Username</th><th>Full name</th><th>Email</th>
+        <th>Username</th><th>Full name</th><th>Email</th><th>Sign-in</th>
         <th>Games played</th><th>Games won</th><th>Targets claimed</th><th>Best solo score</th>
         <th>Joined</th><th></th>
       </tr>
@@ -17,6 +17,7 @@
           <td><%= u.username %> <%= "(admin)".html_safe if u.admin? %></td>
           <td><%= u.full_name || "—" %></td>
           <td><%= u.email.presence || "—" %></td>
+          <td><%= oauth_provider_badge(u) %></td>
           <td><%= u.user_stat&.games_played || 0 %></td>
           <td><%= u.user_stat&.games_won || 0 %></td>
           <td><%= u.user_stat&.targets_claimed || 0 %></td>
