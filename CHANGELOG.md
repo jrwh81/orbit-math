@@ -1,5 +1,36 @@
 # Changelog
 
+## v14.6 — "All games": actually site-wide this time
+
+v14.5's "show every game" was still wrong -- it removed the 5-game cap
+but kept the list scoped to `current_user.game_sessions`, i.e. only the
+viewer's own games. What was actually wanted: every game played by
+anyone, visible to any logged-in viewer, since the section is really a
+site-wide activity feed, not personal history.
+
+- **`@all_games` is now `GameSession.all`** (eager-loaded, ordered by
+  recency), not scoped to the current user at all. Renamed the section
+  "All games" accordingly.
+- **Rows no longer assume the viewer is a participant.** Multiplayer
+  rows show both real players and their points (`p1 vs p2 · 250-100 pts`);
+  solo rows show whoever actually played it. Previously the row
+  template assumed `current_user` was always one of the two players,
+  which no longer holds now that everyone sees everyone's games.
+- **"Open" now only shows if the viewer is genuinely a participant** in
+  that specific game and it isn't completed -- important now that the
+  list includes games the viewer had nothing to do with; showing an
+  "Open" link into someone else's private game would have just sent
+  them into an authorization redirect.
+- Checked participancy via the already-eager-loaded `participants`
+  collection (`g.participants.any? { |p| p.user_id == current_user.id }`)
+  rather than the separate `users` through-association, avoiding an
+  extra query per row that a naive `g.users.include?(...)` would have
+  triggered.
+- Rewrote all four related tests around the corrected behavior,
+  including one that specifically logs in as a third party who played
+  none of the eight seeded games and confirms all eight still show up
+  -- the exact scenario that was still broken in v14.5.
+
 ## v14.5 — game history shows every game, not just the last 5
 
 The actual bug behind "my friend's games aren't showing up": `@recent_games`

@@ -88,22 +88,26 @@
     </div>
 
     <div class="card card-wide">
-      <h2>Game history</h2>
-      <% if @recent_games.any? %>
+      <h2>All games</h2>
+      <% if @all_games.any? %>
         <div class="game-list-scroll">
           <ul class="game-list">
-            <% @recent_games.each do |g| %>
+            <% @all_games.each do |g| %>
+              <% players = g.participants.sort_by(&:player_number).map(&:user) %>
               <li>
-                <strong><%= current_user.name %></strong>
                 <% if g.multiplayer? %>
-                  <% opponent = g.opponent_of(current_user) %>
-                  vs <%= opponent ? opponent.name : "no opponent yet" %>
+                  <% p1, p2 = players %>
+                  <strong><%= p1&.name %></strong> vs
+                  <strong><%= p2 ? p2.name : "no opponent yet" %></strong>
+                  <% if p1 && p2 %>
+                    &middot; <%= g.points_for(p1) %>-<%= g.points_for(p2) %> pts
+                  <% end %>
                 <% else %>
-                  &middot; Solo run
+                  <strong><%= players.first&.name %></strong> &middot; Solo run
+                  &middot; <%= g.points_for(players.first) %> pts
                 <% end %>
                 &middot; <span class="difficulty-badge"><%= g.puzzle.difficulty_label %></span>
-                &middot; <%= g.points_for(current_user) %> pts
-                <% unless g.completed? %>
+                <% if !g.completed? && current_user && g.participants.any? { |p| p.user_id == current_user.id } %>
                   &middot; <%= link_to "Open", g.solo? ? solo_game_path(g) : multiplayer_game_path(g) %>
                 <% end %>
               </li>
@@ -111,7 +115,7 @@
           </ul>
         </div>
       <% else %>
-        <p class="muted">No games yet. Start one above!</p>
+        <p class="muted">No games played yet. Start one above!</p>
       <% end %>
     </div>
   </section>

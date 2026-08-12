@@ -26,9 +26,10 @@ class HomeControllerTest < ActionDispatch::IntegrationTest
     assert_select ".dashboard"
   end
 
-  test "recent games shows the PLAYER'S username, the opponent's username, difficulty, and points" do
+  test "all games shows both players' usernames and points for a multiplayer game, to ANY logged-in viewer" do
     player = User.create!(username: "recent_player", password: "password123")
     opponent = User.create!(username: "recent_opponent", password: "password123")
+    viewer = User.create!(username: "unrelated_viewer", password: "password123") # not a participant at all
 
     puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 100)
     game_session = GameSession.create!(
@@ -42,25 +43,28 @@ class HomeControllerTest < ActionDispatch::IntegrationTest
     ClaimService.call(game_session: game_session, user: player, coords: path[:coords], ops: path[:ops])
     expected_points = game_session.reload.points_for(player)
 
-    post login_path, params: { username: player.username, password: "password123" }
+    # Logged in as someone who wasn't even in this game -- it should
+    # still show up, since this is a site-wide feed, not personal history.
+    post login_path, params: { username: viewer.username, password: "password123" }
     get root_path
 
     assert_response :success
-    # Both usernames must appear -- the player who actually played this
-    # game, and (for multiplayer) who they played against.
     assert_match "recent_player", response.body
-    assert_match "vs recent_opponent", response.body
-    assert_match "#{expected_points} pts", response.body
+    assert_match "vs", response.body
+    assert_match "recent_opponent", response.body
+    assert_match "#{expected_points}-", response.body
     assert_select ".difficulty-badge", text: "Beginner"
   end
 
-  test "recent games shows the player's username for a solo run too, not just multiplayer" do
+  test "all games shows the player's username for a solo run too, not just multiplayer" do
     player = User.create!(username: "recent_solo_player", password: "password123")
+    viewer = User.create!(username: "another_viewer", password: "password123")
+
     puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 103)
     game_session = GameSession.create!(mode: :solo, status: :active, puzzle: puzzle, host: player)
     game_session.participants.create!(user: player, player_number: 1)
 
-    post login_path, params: { username: player.username, password: "password123" }
+    post login_path, params: { username: viewer.username, password: "password123" }
     get root_path
 
     assert_response :success
@@ -68,49 +72,68 @@ class HomeControllerTest < ActionDispatch::IntegrationTest
     assert_match "Solo run", response.body
   end
 
-  test "recent games has no Open link for a completed game, but does for one still in progress" do
+  test "Open link only shows for a game the CURRENT viewer is actually part of, and never for a completed one" do
     player = User.create!(username: "recent_status", password: "password123")
+    other_player = User.create!(username: "someone_elses_game", password: "password123")
 
-    finished_puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 101)
-    finished = GameSession.create!(mode: :solo, status: :active, puzzle: finished_puzzle, host: player)
-    finished.participants.create!(user: player, player_number: 1)
-    GameCompletionService.call(finished)
+    # player's own game, still in progress -- should show Open for player
+    my_ongoing_puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 102)
+    my_ongoing = GameSession.create!(mode: :solo, status: :active, puzzle: my_ongoing_puzzle, host: player)
+    my_ongoing.participants.create!(user: player, player_number: 1)
 
-    ongoing_puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 102)
-    ongoing = GameSession.create!(mode: :solo, status: :active, puzzle: ongoing_puzzle, host: player)
-    ongoing.participants.create!(user: player, player_number: 1)
+    # player's own game, completed -- should never show Open
+    my_finished_puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 101)
+    my_finished = GameSession.create!(mode: :solo, status: :active, puzzle: my_finished_puzzle, host: player)
+    my_finished.participants.create!(user: player, player_number: 1)
+    GameCompletionService.call(my_finished)
+
+    # someone else's game, still in progress -- should NOT show Open to player
+    others_ongoing_puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 104)
+    others_ongoing = GameSession.create!(mode: :solo, status: :active, puzzle: others_ongoing_puzzle, host: other_player)
+    others_ongoing.participants.create!(user: other_player, player_number: 1)
 
     post login_path, params: { username: player.username, password: "password123" }
     get root_path
 
     assert_response :success
-    assert_select "a[href=?]", solo_game_path(ongoing), text: "Open"
-    assert_select "a[href=?]", solo_game_path(finished), count: 0
+    assert_select "a[href=?]", solo_game_path(my_ongoing), text: "Open"
+    assert_select "a[href=?]", solo_game_path(my_finished), count: 0
+    assert_select "a[href=?]", solo_game_path(others_ongoing), count: 0
   end
 
-  test "regression: game history shows every game, not just the 5 most recent" do
-    # This is the exact bug reported: a player with more than 5 games
-    # couldn't see anything past their 5 most recent, silently hiding
-    # real history rather than paginating it or making that limit visible.
-    player = User.create!(username: "history_full", password: "password123")
+  test "regression: All games shows every game site-wide, not just 5 or just the viewer's own" do
+    # The bug went through two wrong fixes before landing here: first it
+    # was capped at 5, then it was "every game the current viewer has
+    # played" -- neither is what was actually wanted, which is literally
+    # every game, played by anyone, visible to any logged-in viewer.
+    player_one = User.create!(username: "history_p1", password: "password123")
+    player_two = User.create!(username: "history_p2", password: "password123")
+    viewer = User.create!(username: "history_viewer", password: "password123")
 
-    game_sessions = 7.times.map do |i|
+    games_for_p1 = 4.times.map do |i|
       puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 200 + i)
-      g = GameSession.create!(mode: :solo, status: :active, puzzle: puzzle, host: player)
-      g.participants.create!(user: player, player_number: 1)
+      g = GameSession.create!(mode: :solo, status: :active, puzzle: puzzle, host: player_one)
+      g.participants.create!(user: player_one, player_number: 1)
       GameCompletionService.call(g)
       g
     end
 
-    post login_path, params: { username: player.username, password: "password123" }
+    games_for_p2 = 4.times.map do |i|
+      puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 300 + i)
+      g = GameSession.create!(mode: :solo, status: :active, puzzle: puzzle, host: player_two)
+      g.participants.create!(user: player_two, player_number: 1)
+      GameCompletionService.call(g)
+      g
+    end
+
+    total_games = games_for_p1.size + games_for_p2.size
+
+    # Logged in as a THIRD person who played none of these -- should
+    # still see all 8, proving this is a genuine site-wide feed.
+    post login_path, params: { username: viewer.username, password: "password123" }
     get root_path
 
     assert_response :success
-    # All 7 should be reachable via their unique difficulty badges/ids --
-    # simplest robust check is that all 7 game ids appear as data on the
-    # page somewhere (e.g. the completed games' "Open" links are gone,
-    # but the games themselves -- via their difficulty_label/points rows --
-    # should each still render one <li> per game).
-    assert_select ".game-list-scroll .game-list li", count: game_sessions.size
+    assert_select ".game-list-scroll .game-list li", count: total_games
   end
 end
