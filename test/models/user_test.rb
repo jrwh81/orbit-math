@@ -32,4 +32,40 @@ class UserTest < ActiveSupport::TestCase
     assert user.stat.present?
     assert_equal 0, user.stat.games_played
   end
+
+  test "#name is always the username, never a real name -- privacy guarantee for public-facing display" do
+    user = User.new(username: "privacycheck", password: "password123", first_name: "Real", last_name: "Name")
+    assert_equal "privacycheck", user.name
+  end
+
+  test "#full_name joins first and last name, and is nil (not blank string) when both are absent" do
+    with_name = User.new(first_name: "Grace", last_name: "Hopper")
+    assert_equal "Grace Hopper", with_name.full_name
+
+    without_name = User.new
+    assert_nil without_name.full_name
+  end
+
+  test "first_name/last_name/email are NOT required on an ordinary create -- only within the :signup context" do
+    # This is the core guarantee that keeps the rest of the test suite
+    # (and seeds, and admin-created users) working: plain User.create!
+    # calls, exactly like every other test in this app already does,
+    # must keep working without needing first_name/last_name/email.
+    user = User.new(username: "plain_create", password: "password123")
+    assert user.valid?, "a plain (non-signup) User should not require first_name/last_name/email"
+    assert user.save
+  end
+
+  test "first_name/last_name/email ARE required when saved with the :signup context" do
+    user = User.new(username: "signup_context_check", password: "password123")
+    refute user.valid?(:signup)
+    assert user.errors[:first_name].any?
+    assert user.errors[:last_name].any?
+    assert user.errors[:email].any?
+
+    user.first_name = "Katherine"
+    user.last_name = "Johnson"
+    user.email = "katherine@example.com"
+    assert user.valid?(:signup)
+  end
 end

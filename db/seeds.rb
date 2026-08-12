@@ -21,9 +21,11 @@ puts "== Seeding demo data for #{Rails.application.config.x.game.name} =="
 
 DEMO_PASSWORD = "password123"
 
-def demo_user(username, display_name)
+def demo_user(username, first_name, last_name)
   User.find_or_create_by!(username: username) do |u|
-    u.display_name = display_name
+    u.first_name = first_name
+    u.last_name = last_name
+    u.email = "#{username}@example.com"
     u.password = DEMO_PASSWORD
     u.password_confirmation = DEMO_PASSWORD
   end
@@ -51,10 +53,10 @@ def play_claims!(game_session, count)
   made
 end
 
-nova   = demo_user("nova", "Nova")
-comet  = demo_user("comet", "Comet")
-pulsar = demo_user("pulsar", "Pulsar")
-meteor = demo_user("meteor", "Meteor")
+nova   = demo_user("nova", "Nova", "Starling")
+comet  = demo_user("comet", "Comet", "Halley")
+pulsar = demo_user("pulsar", "Pulsar", "Vega")
+meteor = demo_user("meteor", "Meteor", "Storm")
 
 puts "-- users ready: #{[nova, comet, pulsar, meteor].map(&:username).join(', ')}"
 

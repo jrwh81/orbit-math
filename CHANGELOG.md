@@ -1,5 +1,52 @@
 # Changelog
 
+## v11 — signup rework: first/last name, no display name, username-only in public
+
+Redesigned the signup form to collect: first name, last name, username,
+email, password (in that order) -- dropped "display name" entirely, per
+feedback that it wasn't adding anything.
+
+The interesting part was answering "what shows where": first/last name
+are now **admin-only** (`User#full_name`), never shown to any other
+player. Every player-facing surface -- nav bar, leaderboard (which is
+fully public, no login required to view), in-game scoreboard, "hosted
+by" labels -- shows **username only**. That was an explicit choice
+given the leaderboard's public visibility, not just a default.
+
+- **New `first_name`/`last_name` columns** on `users`; **`display_name`
+  column removed** (new migration does both in one step, since nothing
+  referenced it anymore by the time this was done).
+- **`User#name`** now simply returns `username` -- and because every
+  existing player-facing view already called `.name` rather than
+  `.display_name` directly, this one change alone updated the nav bar,
+  leaderboard, scoreboard, and every "hosted by" label with zero other
+  view edits needed.
+- **`User#full_name`** (new) joins first + last name, admin-only. Wired
+  into the admin dashboard's recent-signups table, the admin users
+  list, and the admin user detail page (alongside username and email,
+  which were already admin-only).
+- **Email is now required at signup**, first/last name too -- but
+  enforced via a Rails **validation context** (`on: :signup`), not a
+  blanket model requirement. This matters: the existing test suite (60+
+  tests at this point) creates users directly via `User.create!` in
+  dozens of places, almost none of which set an email, since it's been
+  optional since the very first version. A blanket requirement would
+  have broken most of that suite with no way for me to verify every
+  fix without running it myself. The validation context means the
+  signup form (`@user.save(context: :signup)`) genuinely enforces these
+  fields, while every other `.create!` call -- tests, seeds, admin,
+  future code -- is completely unaffected.
+- New test coverage: a model-level test that a plain `User.create!`
+  still works without first/last/email (the core guarantee the whole
+  approach depends on), a test that the `:signup` context genuinely
+  does reject an incomplete signup, a controller-level test that an
+  incomplete signup POST actually fails, and a direct test that
+  `#name` is provably always the username even when a real name is set
+  (the privacy guarantee this whole feature is built around).
+- Updated `db/seeds.rb` and `demo:multiplayer` to set first/last
+  name + a real (fake) email on every demo account, since email is now
+  meaningful admin-panel data worth having in seeded data.
+
 ## v10 — admin backend
 
 A lightweight, custom-built admin panel — not the ActiveAdmin gem,

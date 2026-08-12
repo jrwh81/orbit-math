@@ -2,11 +2,15 @@
 
 <%= link_to "\u2190 All users", admin_users_path, class: "admin-back-link" %>
 
-<h1><%= @user.name %> <%= "(admin)".html_safe if @user.admin? %></h1>
+<h1>@<%= @user.username %> <%= "(admin)".html_safe if @user.admin? %></h1>
 <p class="muted">
-  @<%= @user.username %>
-  <% if @user.email.present? %> &middot; <%= @user.email %><% end %>
-  &middot; joined <%= @user.created_at.strftime("%B %-d, %Y") %>
+  <% if @user.full_name %>
+    <%= @user.full_name %> &middot;
+  <% end %>
+  <% if @user.email.present? %>
+    <%= @user.email %> &middot;
+  <% end %>
+  joined <%= @user.created_at.strftime("%B %-d, %Y") %>
 </p>
 
 <div class="admin-stat-cards">

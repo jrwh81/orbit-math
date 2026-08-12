@@ -12,7 +12,7 @@ class GameStatePresenterTest < ActiveSupport::TestCase
   end
 
   test "summary includes claims, longest chain, and highest value per user once completed" do
-    user = User.create!(username: "gsp_completed", password: "password123", display_name: "Presenter Test")
+    user = User.create!(username: "gsp_completed", password: "password123", first_name: "Presenter", last_name: "Test")
     puzzle = PuzzleGenerator.call(difficulty: "advanced", seed: 2)
     game_session = GameSession.create!(mode: :solo, status: :active, puzzle: puzzle, host: user)
     game_session.participants.create!(user: user, player_number: 1)

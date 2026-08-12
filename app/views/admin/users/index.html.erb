@@ -6,7 +6,7 @@
   <table class="admin-table">
     <thead>
       <tr>
-        <th>Username</th><th>Display name</th><th>Email</th>
+        <th>Username</th><th>Full name</th><th>Email</th>
         <th>Games played</th><th>Games won</th><th>Targets claimed</th><th>Best solo score</th>
         <th>Joined</th><th></th>
       </tr>
@@ -15,7 +15,7 @@
       <% @users.each do |u| %>
         <tr>
           <td><%= u.username %> <%= "(admin)".html_safe if u.admin? %></td>
-          <td><%= u.display_name.presence || "—" %></td>
+          <td><%= u.full_name || "—" %></td>
           <td><%= u.email.presence || "—" %></td>
           <td><%= u.user_stat&.games_played || 0 %></td>
           <td><%= u.user_stat&.games_won || 0 %></td>

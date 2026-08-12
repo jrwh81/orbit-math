@@ -6,8 +6,8 @@ require "test_helper"
 # and stat tracking all agree with each other once the clock runs out.
 class MultiplayerSimulationTest < ActiveSupport::TestCase
   test "two players build claims during a round, and time running out crowns whoever has more" do
-    player_one = User.create!(username: "sim_astra", password: "password123", display_name: "Astra")
-    player_two = User.create!(username: "sim_orion", password: "password123", display_name: "Orion")
+    player_one = User.create!(username: "sim_astra", password: "password123", first_name: "Astra", last_name: "Player")
+    player_two = User.create!(username: "sim_orion", password: "password123", first_name: "Orion", last_name: "Player")
 
     puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 2026)
     game_session = GameSession.create!(

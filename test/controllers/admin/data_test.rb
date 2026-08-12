@@ -70,7 +70,7 @@ class AdminDataTest < ActionDispatch::IntegrationTest
 
   test "an admin viewing a user's detail page sees THAT user's data, not their own -- guards against a variable mix-up" do
     sign_in_as_admin
-    other = User.create!(username: "other_player", password: "password123", display_name: "The Other Player")
+    other = User.create!(username: "other_player", password: "password123", first_name: "The", last_name: "Other Player")
 
     get admin_user_path(other)
     assert_response :success
@@ -80,6 +80,9 @@ class AdminDataTest < ActionDispatch::IntegrationTest
     # REQUESTED user, not accidentally showing the logged-in admin's own
     # record (an easy mistake if @user ever got confused with current_user).
     assert_select "h1", text: /#{Regexp.escape(other.name)}/
-    assert_select ".muted", text: /@other_player/
+    # The page's h1 shows "@username", and the .muted line beneath it
+    # shows the admin-only full name -- check both, since together they
+    # prove the page is scoped to the requested user, not the admin's own.
+    assert_select ".muted", text: /#{Regexp.escape(other.full_name)}/
   end
 end

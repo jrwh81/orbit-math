@@ -117,6 +117,7 @@ a:hover { text-decoration: underline; }
 .auth-form { max-width: 380px; margin: 0 auto; }
 .auth-form h1 { text-align: center; }
 .field { margin-bottom: 14px; display: flex; flex-direction: column; gap: 4px; }
+.field-note { margin-top: -6px; margin-bottom: 16px; font-size: 0.78rem; }
 .field label { font-size: 0.85rem; color: var(--muted); }
 .field input {
   background: var(--bg-cell); border: 1px solid var(--border); border-radius: 8px;

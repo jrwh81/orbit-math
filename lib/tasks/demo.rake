@@ -3,8 +3,8 @@ namespace :demo do
   task multiplayer: :environment do
     puts "== #{Rails.application.config.x.game.name}: simulated multiplayer match =="
 
-    p1 = User.find_or_create_by!(username: "demo_astra") { |u| u.password = "password123"; u.display_name = "Astra" }
-    p2 = User.find_or_create_by!(username: "demo_orion") { |u| u.password = "password123"; u.display_name = "Orion" }
+    p1 = User.find_or_create_by!(username: "demo_astra") { |u| u.password = "password123"; u.first_name = "Astra"; u.last_name = "Player" }
+    p2 = User.find_or_create_by!(username: "demo_orion") { |u| u.password = "password123"; u.first_name = "Orion"; u.last_name = "Player" }
 
     puzzle = PuzzleGenerator.call(difficulty: "intermediate", seed: rand(1..1_000_000))
     game = GameSession.create!(mode: :multiplayer, status: :active, puzzle: puzzle, host: p1, started_at: Time.current)

@@ -15,29 +15,39 @@
 
   <%= form_with model: @user, url: signup_path do |f| %>
     <div class="field">
+      <%= f.label :first_name, "First name" %>
+      <%= f.text_field :first_name, autofocus: true, autocomplete: "given-name", required: true %>
+    </div>
+
+    <div class="field">
+      <%= f.label :last_name, "Last name" %>
+      <%= f.text_field :last_name, autocomplete: "family-name", required: true %>
+    </div>
+
+    <div class="field">
       <%= f.label :username %>
-      <%= f.text_field :username, autofocus: true, autocomplete: "username" %>
+      <%= f.text_field :username, autocomplete: "username", required: true %>
     </div>
 
     <div class="field">
-      <%= f.label :display_name, "Display name (optional)" %>
-      <%= f.text_field :display_name %>
-    </div>
-
-    <div class="field">
-      <%= f.label :email, "Email (optional)" %>
-      <%= f.email_field :email, autocomplete: "email" %>
+      <%= f.label :email %>
+      <%= f.email_field :email, autocomplete: "email", required: true %>
     </div>
 
     <div class="field">
       <%= f.label :password %>
-      <%= f.password_field :password, autocomplete: "new-password" %>
+      <%= f.password_field :password, autocomplete: "new-password", required: true %>
     </div>
 
     <div class="field">
       <%= f.label :password_confirmation %>
-      <%= f.password_field :password_confirmation, autocomplete: "new-password" %>
+      <%= f.password_field :password_confirmation, autocomplete: "new-password", required: true %>
     </div>
+
+    <p class="muted field-note">
+      Your first and last name are only ever visible to you and site admins.
+      Everyone else only ever sees your username.
+    </p>
 
     <%= f.submit "Sign up", class: "btn btn-primary" %>
   <% end %>
