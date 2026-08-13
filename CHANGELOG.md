@@ -1,5 +1,72 @@
 # Changelog
 
+## v17 — leaderboard split into 4 difficulty-specific tables
+
+A Beginner regular and an Expert grinder were never really comparable
+on one combined ranking -- the leaderboard is now four separate tables,
+one per difficulty, each ranked by total points within that difficulty.
+
+- **New `UserDifficultyStat` model** (new migration) -- a per-user,
+  per-difficulty version of the existing lifetime `UserStat`: games
+  played/won, targets claimed, total points, best solo score, all
+  scoped to one specific difficulty rather than a single blended total.
+- **`UserDifficultyStat.record_completed_game!`** is the one place that
+  rolls a finished game into these stats -- used by both
+  `GameCompletionService` for every game completed from now on, AND by
+  the migration itself to **backfill every already-completed game**
+  in one step. Keeping this logic in exactly one method means the
+  backfill and live gameplay can never drift out of sync with each
+  other, and means the backfill is implicitly covered by the same
+  tests that cover live play.
+- **No `.limit()` on any leaderboard table, on purpose.** An earlier,
+  unrelated feature on this app (the homepage's game history) caused
+  real, confusing user-facing bugs from a silent 5-item cap. Learned
+  that lesson -- every leaderboard shows everyone within that
+  difficulty, contained in the same scrollable panel pattern
+  (`.game-list-scroll`) already used elsewhere, not an arbitrary cutoff.
+- Ranked by **total points** within each difficulty (primary), games
+  won (tiebreak) -- consistent with points being the app's actual
+  scoring metric since the value-tiered system.
+- New test coverage: stats accumulate correctly across multiple games
+  at the same difficulty, games at different difficulties never mix
+  into the same row, multiplayer win-crediting only goes to the actual
+  winner (never on a tie), `GameCompletionService` wires this in
+  automatically with no manual step, and at the controller level --
+  all four difficulty sections render, a Beginner-only player never
+  leaks onto the Expert table, ranking is correctly points-first, and
+  an empty difficulty shows a friendly message rather than a blank or
+  broken section.
+
+## v16 — mobile-friendly nav + broader responsive polish
+
+- **Hamburger menu for the top nav**, both the main site header and the
+  admin layout. Collapses below 720px viewport width into a standard
+  three-line toggle that expands a vertical dropdown panel; stays a
+  normal horizontal row above that width. New `nav_controller.js`
+  (Stimulus) handles the show/hide -- deliberately simple, no
+  outside-click or navigation-based auto-close logic, since clicking
+  any link in the open menu already navigates away, which tears down
+  and recreates the controller for free (resetting it closed).
+- **Fixed a real gap while in there**: the admin layout never loaded
+  any JavaScript at all (`javascript_importmap_tags` was missing
+  entirely) -- meaning even after building the hamburger markup, it
+  would have rendered but done nothing when clicked on admin pages.
+  Added it.
+- **Broader responsive audit pass**: added `flex-wrap` to four more
+  flex rows that could still cramp on a narrow phone screen without it
+  -- the homepage's hero action buttons, the in-game timer/claims
+  readout, and the end-of-round stats modal's stat list and action
+  buttons. Most of the app already had this from earlier overflow
+  fixes (game lists, the difficulty picker, admin tables); this closes
+  out the remaining gaps found by an explicit pass rather than waiting
+  for another bug report.
+- New test coverage: the hamburger button and its Stimulus wiring
+  (`data-controller`, `data-action`, `data-nav-target`) are present on
+  both the main site and admin layouts, and a dedicated regression test
+  confirms the admin layout actually loads JavaScript now (asserting on
+  the literal absence of that bug going forward, not just the visible
+  markup).
+
 ## v15.2 — hide "Continue with Facebook" from the public until App Review is done
 
 Facebook sign-in works correctly (verified for the app owner and any

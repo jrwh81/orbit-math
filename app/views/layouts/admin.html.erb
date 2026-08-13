@@ -6,13 +6,20 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <%= stylesheet_link_tag "application" %>
+    <%= javascript_importmap_tags %>
   </head>
 
   <body>
-    <header class="site-header">
+    <header class="site-header" data-controller="nav">
       <%= link_to "Admin · #{@game.name}", admin_root_path, class: "brand" %>
 
-      <nav class="site-nav">
+      <button type="button" class="nav-toggle" data-action="nav#toggle" aria-label="Menu" aria-expanded="false">
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+      </button>
+
+      <nav class="site-nav" data-nav-target="menu">
         <%= link_to "Dashboard", admin_root_path %>
         <%= link_to "Users", admin_users_path %>
         <%= link_to "Games", admin_game_sessions_path %>

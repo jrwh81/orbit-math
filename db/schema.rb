@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_01_000014) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_01_000015) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -73,6 +73,20 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_01_000014) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "user_difficulty_stats", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "difficulty", null: false
+    t.integer "games_played", default: 0, null: false
+    t.integer "games_won", default: 0, null: false
+    t.integer "targets_claimed", default: 0, null: false
+    t.integer "total_points", default: 0, null: false
+    t.integer "best_solo_score", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "difficulty"], name: "index_user_difficulty_stats_on_user_id_and_difficulty", unique: true
+    t.index ["user_id"], name: "index_user_difficulty_stats_on_user_id"
+  end
+
   create_table "user_stats", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.integer "games_played", default: 0, null: false
@@ -108,5 +122,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_01_000014) do
   add_foreign_key "moves", "users"
   add_foreign_key "participants", "game_sessions"
   add_foreign_key "participants", "users"
+  add_foreign_key "user_difficulty_stats", "users"
   add_foreign_key "user_stats", "users"
 end

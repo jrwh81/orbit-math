@@ -136,4 +136,13 @@ class HomeControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".game-list-scroll .game-list li", count: total_games
   end
+
+  test "the mobile nav hamburger toggle is present and correctly wired to Stimulus" do
+    get root_path
+    assert_response :success
+
+    assert_select "header[data-controller='nav']"
+    assert_select "button.nav-toggle[data-action='nav#toggle'][aria-label='Menu'][aria-expanded='false']"
+    assert_select "nav.site-nav[data-nav-target='menu']"
+  end
 end

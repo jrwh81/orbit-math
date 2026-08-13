@@ -19,12 +19,18 @@
   </head>
 
   <body>
-    <header class="site-header">
+    <header class="site-header" data-controller="nav">
       <%= link_to root_path, class: "brand" do %>
         <span class="brand-mark">&#9737;</span> <span class="brand-name"><%= @game.name %></span>
       <% end %>
 
-      <nav class="site-nav">
+      <button type="button" class="nav-toggle" data-action="nav#toggle" aria-label="Menu" aria-expanded="false">
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+      </button>
+
+      <nav class="site-nav" data-nav-target="menu">
         <% if logged_in? %>
           <%= link_to "Solo", new_solo_game_path %>
           <%= link_to "Multiplayer", multiplayer_games_path %>

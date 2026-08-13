@@ -1,5 +1,7 @@
 # Finalizes a GameSession once the clock runs out (or a host ends it
-# early) and rolls the results into each player's UserStat.
+# early) and rolls the results into each player's lifetime UserStat and
+# their per-difficulty UserDifficultyStat (which powers the split
+# leaderboards).
 class GameCompletionService
   def self.call(game_session)
     new(game_session).call
@@ -36,6 +38,8 @@ class GameCompletionService
 
       stat.save!
     end
+
+    UserDifficultyStat.record_completed_game!(@game_session)
 
     @game_session
   end

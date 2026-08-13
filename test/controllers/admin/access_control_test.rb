@@ -59,4 +59,19 @@ class AdminAccessControlTest < ActionDispatch::IntegrationTest
     get root_path
     assert_select "a", text: "Admin", count: 1
   end
+
+  test "the admin layout has its own working mobile nav hamburger, and actually loads JavaScript" do
+    admin = User.create!(username: "nav_hamburger_admin", password: "password123", admin: true)
+    post login_path, params: { username: admin.username, password: "password123" }
+
+    get admin_root_path
+    assert_response :success
+
+    assert_select "header[data-controller='nav']"
+    assert_select "button.nav-toggle[data-action='nav#toggle']"
+    assert_select "nav.site-nav[data-nav-target='menu']"
+    # The admin layout previously loaded no JavaScript at all -- without
+    # this, the hamburger button would render but do nothing when clicked.
+    assert_match "importmap", response.body
+  end
 end
