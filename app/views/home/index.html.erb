@@ -97,10 +97,19 @@
               <li>
                 <% if g.multiplayer? %>
                   <% p1, p2 = players %>
-                  <strong><%= p1&.name %></strong> vs
-                  <strong><%= p2 ? p2.name : "no opponent yet" %></strong>
-                  <% if p1 && p2 %>
-                    &middot; <%= g.points_for(p1) %>-<%= g.points_for(p2) %> pts
+                  <% result = multiplayer_result(g, p1, p2) %>
+                  <% if result.nil? %>
+                    <strong><%= p1&.name %></strong> vs no opponent yet
+                  <% elsif result[:status] == :winner %>
+                    Winner: <strong class="winner-name"><%= result[:winner].name %></strong> (<%= result[:winner_points] %> pts)
+                    &middot; Opponent: <%= result[:loser].name %> (<%= result[:loser_points] %> pts)
+                  <% elsif result[:status] == :tie %>
+                    Tie: <%= result[:player_one].name %> (<%= result[:p1_points] %> pts)
+                    vs <%= result[:player_two].name %> (<%= result[:p2_points] %> pts)
+                  <% else %>
+                    <%= result[:player_one].name %> (<%= result[:p1_points] %> pts)
+                    vs <%= result[:player_two].name %> (<%= result[:p2_points] %> pts)
+                    &middot; <span class="muted">in progress</span>
                   <% end %>
                 <% else %>
                   <strong><%= players.first&.name %></strong> &middot; Solo run

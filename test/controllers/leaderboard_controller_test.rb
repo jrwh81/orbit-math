@@ -21,6 +21,10 @@ class LeaderboardControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     body = response.body
+    # Anchor to the actual <h2> section heading, not just the bare word
+    # -- the hero paragraph text on this page also happens to mention
+    # both "Beginner" and "Expert" in prose, which a naive search would
+    # match instead of the real section boundary.
     beginner_section = body[/<h2>Beginner<\/h2>.*?(?=<h2>|\z)/m]
     expert_section = body[/<h2>Expert<\/h2>.*?(?=<h2>|\z)/m]
 

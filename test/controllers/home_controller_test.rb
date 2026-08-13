@@ -26,7 +26,7 @@ class HomeControllerTest < ActionDispatch::IntegrationTest
     assert_select ".dashboard"
   end
 
-  test "all games shows both players' usernames and points for a multiplayer game, to ANY logged-in viewer" do
+  test "all games shows 'in progress' (not a premature winner) for a multiplayer game still underway" do
     player = User.create!(username: "recent_player", password: "password123")
     opponent = User.create!(username: "recent_opponent", password: "password123")
     viewer = User.create!(username: "unrelated_viewer", password: "password123") # not a participant at all
@@ -52,8 +52,59 @@ class HomeControllerTest < ActionDispatch::IntegrationTest
     assert_match "recent_player", response.body
     assert_match "vs", response.body
     assert_match "recent_opponent", response.body
-    assert_match "#{expected_points}-", response.body
+    assert_match "#{expected_points} pts", response.body
+    assert_match "in progress", response.body
+    refute_match "Winner:", response.body
     assert_select ".difficulty-badge", text: "Beginner"
+  end
+
+  test "all games explicitly labels the winner once a multiplayer game completes" do
+    winner_user = User.create!(username: "explicit_winner", password: "password123")
+    loser_user = User.create!(username: "explicit_loser", password: "password123")
+    viewer = User.create!(username: "explicit_viewer", password: "password123")
+
+    puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 105)
+    game_session = GameSession.create!(
+      mode: :multiplayer, status: :active, puzzle: puzzle, host: winner_user, started_at: Time.current
+    )
+    game_session.participants.create!(user: winner_user, player_number: 1)
+    game_session.participants.create!(user: loser_user, player_number: 2)
+
+    target = game_session.active_targets.first
+    path = PuzzleSolver.find_path_for(game_session.active_grid, target["value"])
+    ClaimService.call(game_session: game_session, user: winner_user, coords: path[:coords], ops: path[:ops])
+    GameCompletionService.call(game_session.reload)
+
+    post login_path, params: { username: viewer.username, password: "password123" }
+    get root_path
+
+    assert_response :success
+    assert_match "Winner:", response.body
+    assert_match "explicit_winner", response.body
+    assert_match "Opponent:", response.body
+    assert_match "explicit_loser", response.body
+    assert_select ".winner-name", text: "explicit_winner"
+  end
+
+  test "all games labels a completed 0-0 multiplayer game as a tie, not a winner" do
+    p1 = User.create!(username: "tie_player_one", password: "password123")
+    p2 = User.create!(username: "tie_player_two", password: "password123")
+    viewer = User.create!(username: "tie_viewer", password: "password123")
+
+    puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 106)
+    game_session = GameSession.create!(
+      mode: :multiplayer, status: :active, puzzle: puzzle, host: p1, started_at: Time.current
+    )
+    game_session.participants.create!(user: p1, player_number: 1)
+    game_session.participants.create!(user: p2, player_number: 2)
+    game_session.update!(status: :completed, ended_at: Time.current)
+
+    post login_path, params: { username: viewer.username, password: "password123" }
+    get root_path
+
+    assert_response :success
+    assert_match "Tie:", response.body
+    refute_match "Winner:", response.body
   end
 
   test "all games shows the player's username for a solo run too, not just multiplayer" do

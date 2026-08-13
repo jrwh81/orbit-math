@@ -1,5 +1,28 @@
 # Changelog
 
+## v18 — explicit Winner/Opponent labeling in the All games feed
+
+Previously showed both players' scores side by side ("p1 vs p2 · 250-100
+pts"), requiring a mental comparison to figure out who actually won.
+
+- **New `ApplicationHelper#multiplayer_result`** computes one of three
+  states as plain data (never pre-built HTML, so the view's normal
+  `<%= %>` interpolation keeps auto-escaping usernames): `:winner`
+  (completed with a clear winner -- "Winner: **name** (X pts) ·
+  Opponent: name (Y pts)", the winner's name highlighted in green),
+  `:tie` (completed with no winner -- `GameSession#winner` already
+  correctly returns nil for a tie rather than picking one arbitrarily),
+  or `:in_progress` (not completed yet -- shows both current scores
+  without claiming a premature winner).
+- Verified the winner is reported identically regardless of which
+  player is passed first/second -- who's "player one" in the
+  participant list should never affect who's actually shown as the winner.
+- New test coverage: all three states directly at the helper level, plus
+  full end-to-end integration tests confirming the actual rendered
+  homepage text and the `.winner-name` styling for each case -- winner,
+  tie, and still-in-progress (which also fixed a now-stale existing
+  test that expected the old dash-separated score format).
+
 ## v17 — leaderboard split into 4 difficulty-specific tables
 
 A Beginner regular and an Expert grinder were never really comparable

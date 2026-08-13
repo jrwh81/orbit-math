@@ -10,6 +10,15 @@ class UserDifficultyStat < ApplicationRecord
   # backfill history from games that completed before this table
   # existed. Keeping it in one place means the backfill and live
   # gameplay can never drift out of sync with each other.
+  #
+  # Silently skips any game whose puzzle has a difficulty that isn't
+  # one of the four real tiers -- e.g. "normal", a leftover placeholder
+  # value from before real difficulty levels existed, which can still
+  # be sitting on old Puzzle rows never touched since. There's no
+  # sensible tier to guess for those old games, so they're simply left
+  # out of the new per-difficulty stats rather than crashing the whole
+  # backfill (or, going forward, a live game's completion) over data
+  # too old to reasonably belong in this system at all.
   def self.record_completed_game!(game_session)
     difficulty = game_session.puzzle&.difficulty
     return unless PuzzleGenerator::DIFFICULTY_LEVELS.key?(difficulty)
