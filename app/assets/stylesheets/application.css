@@ -123,6 +123,13 @@ a:hover { text-decoration: underline; }
 .btn-secondary { background: transparent; border-color: var(--accent-2); color: var(--accent-2); }
 .btn-small { padding: 6px 12px; font-size: 0.85rem; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+/* The one-click "Play a Game" shortcut in the header -- always the
+   first nav item, for anyone whether logged in or not, so it reads as
+   the single most obvious thing to do on the whole site. */
+.btn-play {
+  background: var(--accent-2); color: #051019; border-color: var(--accent-2);
+  font-weight: 700;
+}
 
 .flash { margin: 0; padding: 10px 24px; text-align: center; }
 .flash-notice { background: rgba(86, 227, 159, 0.15); color: var(--success); }
@@ -656,6 +663,21 @@ a:hover { text-decoration: underline; }
 
 .stats-actions { display: flex; gap: 10px; justify-content: center; margin-bottom: 14px; flex-wrap: wrap; }
 .stats-auto-note { font-size: 0.78rem; color: var(--muted); margin: 0; }
+
+/* The guest "claim your name for the leaderboard" prompt -- lives
+   inside the same .stats-modal as the normal post-game summary (see
+   grid_controller.js#celebrateCompletion), swapped in instead of the
+   usual Play again/Continue buttons until it's submitted or skipped. */
+.claim-name-prompt { margin: 0 0 10px; font-weight: 600; }
+.claim-name-error { min-height: 18px; margin: 0 0 6px; font-size: 0.8rem; color: var(--warning); }
+.claim-name-success { margin: 0 0 14px; font-size: 0.85rem; color: var(--success); font-weight: 600; }
+.claim-name-input {
+  width: 100%; box-sizing: border-box; margin-bottom: 10px;
+  padding: 10px 12px; border-radius: 8px;
+  background: var(--bg-cell); border: 1px solid var(--border); color: var(--text);
+  font-size: 0.95rem;
+}
+.claim-name-input:focus { outline: none; border-color: var(--accent); }
 
 .waiting-room { text-align: center; }
 

@@ -11,10 +11,12 @@
 
   <div class="hero-actions">
     <% if logged_in? %>
-      <%= link_to "Play Solo", new_solo_game_path, class: "btn btn-primary" %>
+      <%= link_to "Play a Game", play_path, class: "btn btn-play" %>
+      <%= link_to "Choose Difficulty", new_solo_game_path, class: "btn btn-secondary" %>
       <%= link_to "Multiplayer Lobby", multiplayer_games_path, class: "btn btn-secondary" %>
     <% else %>
-      <%= link_to "Sign up to play", signup_path, class: "btn btn-primary" %>
+      <%= link_to "Play a Game -- no signup needed", play_path, class: "btn btn-play" %>
+      <%= link_to "Sign up", signup_path, class: "btn btn-secondary" %>
       <%= link_to "Log in", login_path, class: "btn btn-secondary" %>
     <% end %>
   </div>

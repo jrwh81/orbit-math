@@ -1,6 +1,10 @@
 Rails.application.routes.draw do
   root "home#index"
 
+  # No-signup quick play -- see GuestPlayController. One GET, no form:
+  # clicking "Play a Game" drops you straight into a round.
+  get "play", to: "guest_play#new"
+
   get  "signup", to: "registrations#new"
   post "signup", to: "registrations#create"
   get  "login",  to: "sessions#new"
@@ -44,6 +48,9 @@ Rails.application.routes.draw do
   # Demo-mode is a per-USER preference (persists across every future solo
   # run, not just this one) -- see UsersController.
   patch "demo_mode", to: "users#update_demo_mode"
+  # Guest post-game "claim your name for the leaderboard" prompt -- see
+  # UsersController#claim_name.
+  patch "claim_name", to: "users#claim_name"
 
   namespace :admin do
     root to: "dashboard#index"

@@ -31,6 +31,7 @@
       </button>
 
       <nav class="site-nav" data-nav-target="menu">
+        <%= link_to "Play a Game", play_path, class: "btn btn-small btn-play" %>
         <% if logged_in? %>
           <%= link_to "Solo", new_solo_game_path %>
           <%= link_to "Multiplayer", multiplayer_games_path %>
@@ -41,6 +42,7 @@
           <span class="nav-user"><%= current_user.name %></span>
           <%= button_to "Log out", logout_path, method: :delete, class: "link-button" %>
         <% else %>
+          <%= link_to "Leaderboard", leaderboard_path %>
           <%= link_to "Log in", login_path %>
           <%= link_to "Sign up", signup_path, class: "btn btn-small" %>
         <% end %>

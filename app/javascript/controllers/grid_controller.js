@@ -81,14 +81,18 @@ function buildChainConnectorMap(path, ops) {
 }
 
 export default class extends Controller {
-  static targets = ["grid", "targets", "scoreboard", "timer", "expression", "pointsTotal", "message", "completion", "popupLayer"]
+  static targets = ["grid", "targets", "scoreboard", "timer", "expression", "pointsTotal", "message", "completion", "popupLayer",
+    "claimNameInput", "claimEmailInput", "claimNameError"]
   static values = {
     submitUrl: String,
     finishUrl: String,
     newGameUrl: String,
     homeUrl: String,
     currentUserId: Number,
-    state: Object
+    state: Object,
+    isGuest: Boolean,
+    nameClaimed: Boolean,
+    claimNameUrl: String
   }
 
   connect() {
@@ -267,6 +271,13 @@ export default class extends Controller {
       headline = "Time's up!"
     }
 
+    // Guests (see GuestPlayController) start with an auto-generated
+    // placeholder name -- the first time one of them finishes a round,
+    // this offers the real name/email prompt right in the same modal
+    // instead of a separate page, so there's zero friction before the
+    // FIRST game and exactly one friendly ask right after it.
+    const showClaimName = this.isGuestValue && !this.nameClaimedValue
+
     this.completionTarget.innerHTML = `
       <div class="stats-overlay">
         <div class="stats-modal">
@@ -277,18 +288,103 @@ export default class extends Controller {
             <li><span class="stats-value">${mine.longest_chain}</span><span class="stats-label">longest chain</span></li>
             <li><span class="stats-value">${mine.highest_value}</span><span class="stats-label">highest prize claimed</span></li>
           </ul>
-          <div class="stats-actions">
-            <a href="${this.newGameUrlValue}" class="btn btn-secondary">Play again</a>
-            <a href="${this.homeUrlValue}" class="btn btn-primary">Continue</a>
-          </div>
-          <p class="stats-auto-note">Heading back to home&hellip;</p>
+          ${showClaimName ? this.claimNameBlockHtml() : this.finalActionsHtml()}
         </div>
       </div>
     `
 
-    setTimeout(() => {
-      window.location.href = this.homeUrlValue
-    }, AUTO_HOME_DELAY_MS)
+    // Auto-home is skipped while the claim-name prompt is showing --
+    // yanking someone to the homepage while they're mid-typing their
+    // name would be a bad time. It resumes being a normal manual
+    // Play again/Continue choice once they submit or skip (see
+    // replaceClaimNameBlockWithActions), just without the countdown.
+    if (!showClaimName) {
+      setTimeout(() => {
+        window.location.href = this.homeUrlValue
+      }, AUTO_HOME_DELAY_MS)
+    }
+  }
+
+  claimNameBlockHtml() {
+    const currentName = this.stateValue.players?.find((p) => p.user_id === this.currentUserIdValue)?.name || ""
+    return `
+      <div class="claim-name-block">
+        <p class="claim-name-prompt">Nice round! Put your name on the leaderboard?</p>
+        <p class="claim-name-error" data-grid-target="claimNameError"></p>
+        <input type="text" class="claim-name-input" data-grid-target="claimNameInput" placeholder="Your name" value="${currentName}" maxlength="20">
+        <input type="email" class="claim-name-input" data-grid-target="claimEmailInput" placeholder="Email (optional)">
+        <div class="stats-actions">
+          <button type="button" class="btn btn-secondary" data-action="grid#skipClaimName">Skip</button>
+          <button type="button" class="btn btn-primary" data-action="grid#submitClaimName">Save to leaderboard</button>
+        </div>
+      </div>
+    `
+  }
+
+  finalActionsHtml() {
+    return `
+      <div class="stats-actions">
+        <a href="${this.newGameUrlValue}" class="btn btn-secondary">Play again</a>
+        <a href="${this.homeUrlValue}" class="btn btn-primary">Continue</a>
+      </div>
+      <p class="stats-auto-note">Heading back to home&hellip;</p>
+    `
+  }
+
+  // Name has to be unique -- same validation the model already enforces
+  // for every account -- so a collision here is a normal, expected
+  // outcome, not an error state; just surface it and let them try again.
+  async submitClaimName() {
+    const username = this.claimNameInputTarget.value.trim()
+    const email = this.hasClaimEmailInputTarget ? this.claimEmailInputTarget.value.trim() : ""
+
+    if (!username) {
+      this.claimNameErrorTarget.textContent = "Enter a name first."
+      return
+    }
+
+    let data
+    try {
+      const response = await fetch(this.claimNameUrlValue, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-CSRF-Token": this.csrfToken(),
+          Accept: "application/json"
+        },
+        body: `username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}`
+      })
+      data = await response.json()
+    } catch (e) {
+      this.claimNameErrorTarget.textContent = "Connection error, try again."
+      return
+    }
+
+    if (data.success) {
+      this.replaceClaimNameBlockWithActions(`You're on the board as ${data.username}!`)
+    } else {
+      this.claimNameErrorTarget.textContent = (data.errors && data.errors[0]) || "Couldn't save that name."
+    }
+  }
+
+  skipClaimName() {
+    this.replaceClaimNameBlockWithActions()
+  }
+
+  replaceClaimNameBlockWithActions(note) {
+    const block = this.completionTarget.querySelector(".claim-name-block")
+    if (!block) return
+
+    block.outerHTML = this.finalActionsHtml()
+
+    if (note) {
+      const modal = this.completionTarget.querySelector(".stats-modal")
+      const noteEl = document.createElement("p")
+      noteEl.className = "claim-name-success"
+      noteEl.textContent = note
+      const actions = modal.querySelector(".stats-actions")
+      modal.insertBefore(noteEl, actions)
+    }
   }
 
   // ---------------------------------------------------------------- render

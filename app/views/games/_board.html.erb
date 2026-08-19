@@ -15,6 +15,9 @@
        data-demo-path-url-value="<%= demo_path_solo_game_path(game_session) %>"
        data-demo-mode-url-value="<%= demo_mode_path %>"
        data-demo-initial-path-value="<%= (local_assigns[:demo_path] || { available: false }).to_json %>"
+       data-grid-is-guest-value="<%= current_user.guest? %>"
+       data-grid-name-claimed-value="<%= current_user.name_claimed? %>"
+       data-grid-claim-name-url-value="<%= claim_name_path %>"
      <% end %>>
 
   <div class="scoreboard" data-grid-target="scoreboard">
