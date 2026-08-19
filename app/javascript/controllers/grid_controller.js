@@ -24,10 +24,11 @@ const EXPLOSION_REVEAL_DELAY_MS = 650
 
 // Grid cell values are always a single digit 1-9 (see PuzzleGenerator's
 // digit-bag randomization), so three even bands cover the whole range.
-// Colors (see application.css) are deliberately NOT a red/green pairing
-// -- that's the axis most common colorblindness (red-green) struggles
-// with, so blue/orange/purple gives three bands that stay visually
-// distinct for more people.
+// Only applied once a cell is actually part of the current chain (see
+// renderGrid) -- idle cells stay a neutral off-white so color reads as
+// "this is in your solution," not just decoration. Colors (see
+// application.css) are deliberately NOT a red/green pairing -- that's
+// the axis most common colorblindness struggles with.
 function cellValueColorClass(value) {
   if (value <= 3) return "cell-value-low"
   if (value <= 6) return "cell-value-mid"
@@ -39,7 +40,7 @@ function cellValueColorClass(value) {
 // board, big enough for a legible +/x glyph. Used for both rows and
 // columns, and the grid-rows container is forced to aspect-ratio:1, so
 // cells come out square regardless of how many there are.
-const CONNECTOR_FR = 0.4
+const CONNECTOR_FR = 0.22
 
 // Builds the grid-template-columns/rows value for an NxN board: cell,
 // connector, cell, connector, ... cell. Same string works for both axes
@@ -48,7 +49,7 @@ function gridTemplateTracks(size) {
   const parts = []
   for (let i = 0; i < size; i++) {
     parts.push("1fr")
-    if (i < size - 1) parts.push(`minmax(10px, ${CONNECTOR_FR}fr)`)
+    if (i < size - 1) parts.push(`minmax(6px, ${CONNECTOR_FR}fr)`)
   }
   return parts.join(" ")
 }
@@ -326,8 +327,11 @@ export default class extends Controller {
         const gridRow = 2 * r + 1
         const gridCol = 2 * c + 1
 
+        const isSelected = stepIndex !== -1
+        const valueClass = isSelected ? cellValueColorClass(value) : "cell-value-neutral"
+
         cellsHtml += `<button type="button" class="${classes.join(" ")}" style="grid-row:${gridRow};grid-column:${gridCol};" data-row="${r}" data-col="${c}" data-action="click->grid#cellClicked">
-          <span class="cell-value ${cellValueColorClass(value)}">${value}</span>
+          <span class="cell-value ${valueClass}">${value}</span>
           ${stepIndex !== -1 ? `<span class="cell-order">${stepIndex + 1}</span>` : ""}
         </button>`
 
