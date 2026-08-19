@@ -1,5 +1,146 @@
 # Changelog
 
+## v23 — three color bands for grid digits
+
+- **Grid cell numbers now colored by value range**: 1-3 blue (`#1d4ed8`),
+  4-6 burnt orange (`#c2410c`), 7-9 magenta (`#a21caf`) --
+  `cellValueColorClass(value)`. Covers the whole range since grid cell
+  values are always a single digit 1-9.
+- **Deliberately not a red/green pairing** -- that's the axis most
+  common colorblindness (red-green) struggles to distinguish, so
+  blue/orange/purple was chosen to stay visually distinct for more people.
+- Applied consistently to the homepage's static "How to Play" demo
+  board too, not just the live game.
+
+## v22 — back to circular (with subtle dents), better-defined numbers
+
+- **Rock outline changed from jagged polygon to a smooth, mostly-round
+  shape with gentle dents.** Switched from a straight-line `<polygon>`
+  to a proper smooth `<path>` (cubic Beziers via the standard
+  Catmull-Rom-to-Bezier conversion) through 16 points with small radius
+  variance (42-47, versus the wide 33-50 range from the jagged
+  version) -- reads as "circular, subtly irregular" rather than an
+  angular gem/crystal facet look. Textures (gradient shading, craters
+  with rim highlights, speckles) unchanged from the previous version.
+- **Fixed a real clipping bug while redoing this**: the previous
+  version's outline reached a radius of 50 in a 0-100 viewBox, meaning
+  the 4px stroke had zero margin and could get clipped right at the
+  cell's edge. Pulled the radius range in (max 47) so the stroke has
+  proper breathing room -- applies to both the live game and the
+  homepage's static demo board.
+- **Numbers get a stronger, more defined look**: a light halo around
+  each glyph (keeps it legible against the varying gradient/crater
+  background behind it) plus a pronounced drop shadow, giving it a
+  "lifted above the surface" appearance instead of sitting flat.
+
+## v21 — asteroids rebuilt to match a real reference image
+
+Rebuilt cell rendering from CSS shapes to inline SVG per cell, driven
+by a reference image showing a proper cartoon asteroid: jagged
+irregular silhouette (not a circle), bold black outline, white-to-grey
+shading, and distinct craters with rim highlights.
+
+- **Why SVG instead of more CSS tricks**: a bold outline reliably
+  following a jagged `clip-path` silhouette is fragile across browsers
+  -- border-box and clip-path don't reliably cooperate for this. Real
+  SVG `stroke` on a `polygon` does it cleanly, the same technique
+  already working for the chain-line overlay.
+- **`buildRockSvg(shapeIndex)`** generates each cell's artwork: a
+  12-point jagged polygon (5 fixed radius-offset sets, one per
+  `data-shape` variant, fully deterministic so a cell's silhouette
+  never visibly reshapes between renders), a white-to-grey linear
+  gradient fill, 2 craters per variant (each a darker circle plus a
+  small lighter offset circle for a "dented" rim highlight, matching
+  the reference), and a handful of speckle dots.
+- **`.cell` CSS simplified**: no more `border-radius`, background
+  gradients, or inset box-shadow -- the SVG owns all of that now. Text
+  color flipped from light to dark (`#1a1b1f`) to read against the new
+  light rock instead of the old dark grey one.
+- **Selection state redesigned**: previously the whole cell went solid
+  accent-blue; now (since the rock's own art shouldn't change) it's a
+  glow (`drop-shadow`) plus the SVG polygon's own outline recoloring to
+  accent blue via a CSS override on the `<polygon>` element.
+- **The homepage's "How to Play" demo board** got matching hardcoded
+  SVG markup for its 4 static cells (computed with the exact same
+  coordinate math, just pre-baked since that markup is static ERB, not
+  JS-generated) -- kept visually consistent with the real game rather
+  than silently going blank once the old CSS approach was removed.
+- Honest note: this is a genuine visual redesign matching a supplied
+  reference image, not something I can preview myself -- worth a close
+  look once deployed, especially the crater placement relative to the
+  number text and how the jagged silhouette reads at actual in-game
+  cell sizes across the different grid sizes (4x4 up to 8x8).
+
+## v20 — the whole meteor explodes now, and chains can pivot mid-build
+
+Two changes: a much bigger rebuild of the shatter effect, and a real
+game-feel fix to chain-building.
+
+**Shatter effect, rebuilt:**
+- **~20 pieces reconstruct the actual meteor** at the moment of claim --
+  scattered at random points *within* the real cell's own circular
+  footprint (not spawned from a single point), sized and positioned
+  from the cell's real on-screen dimensions (captured via
+  `getBoundingClientRect()`, synchronously, before the grid's own
+  re-render destroys that DOM node). At frame zero it visually reads as
+  "the meteor, in pieces" sitting exactly where the real one was, then
+  each piece flies outward along its own direction from center --
+  pieces that started near the edge travel further/faster, the way a
+  real shattering object would, not a generic particle burst.
+- **The real cell now hides instantly the moment it's claimed**
+  (`.cell.exploding { opacity: 0 }`) and fades back in once the
+  explosion has mostly played out (`scheduleExplosionReveal`, ~650ms
+  later) -- so the new number never appears directly underneath
+  still-flying debris, which is what made the old effect read as small
+  and subtle no matter how big the pieces were.
+- Pieces hold full opacity for the first ~40% of their flight before
+  fading, so they read as "solid chunks flying apart" rather than
+  fading immediately like sparkles.
+- The CSS fallback path (used automatically if PixiJS doesn't load --
+  see v19) got the same treatment scaled down: more pieces (14, up from
+  6), more travel distance, and fixed to use the actual grey meteor
+  palette instead of a leftover blue-purple color from before the v13
+  theming pass.
+
+**Game mechanic: chains can now pivot instead of getting rejected.**
+Clicking a non-adjacent asteroid while a chain is in progress used to
+just show a warning and do nothing -- now it abandons the current chain
+and starts a fresh one from the newly clicked cell. Forcing a manual
+"clear" step just to switch which asteroid you're building from was
+never useful friction, just an extra click.
+
+## v19 — experimental PixiJS particle shatter (with a hard CSS fallback)
+
+The first step of exploring PixiJS as a rendering upgrade for the game
+board, scoped deliberately narrow: only the shatter effect, nothing
+else touched. Grid, cells, clicking, chain-lines, the solve popup --
+all still exactly the DOM/CSS they were.
+
+- **New `app/javascript/pixi_shatter.js`**, completely isolated from
+  the rest of the game. Lazily loads PixiJS on the first claim of a
+  round, spawns a real particle burst (velocity, gravity, rotation,
+  fade, matching the meteor grey palette) via a shared WebGL canvas
+  layered into the existing `.solve-popup-layer`.
+- **Pinned to PixiJS v7, not the current v8** -- v8's ESM build has a
+  documented rendering bug on some no-bundler CDN setups
+  (pixijs/pixijs#10446) that v7's longer-proven ESM build doesn't share.
+  This app has no bundler by design (Rails importmap), so the safer,
+  older-but-solid version won over the newer one.
+- **Hard fallback, not a hope.** If PixiJS fails to load or initialize
+  for ANY reason -- CDN hiccup, no WebGL, a version/API mismatch I
+  couldn't verify without being able to run this myself --
+  `spawnPixiShatter` returns `false` and `grid_controller.js`
+  automatically falls back to the exact CSS particle effect that
+  already worked before this change. The game cannot break from this;
+  worst case is just not getting the richer effect.
+- Honest note on verification: I could not test that the exact pinned
+  CDN URL resolves correctly, since I have no way to execute this code
+  myself. If the PixiJS version doesn't visibly look different/richer
+  once deployed, check the browser console for a "PixiJS shatter
+  effect unavailable" warning -- that confirms the fallback path fired,
+  which is expected-safe behavior, not a crash, and tells us exactly
+  where to look next.
+
 ## v18 — explicit Winner/Opponent labeling in the All games feed
 
 Previously showed both players' scores side by side ("p1 vs p2 · 250-100

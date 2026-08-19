@@ -1,5 +1,7 @@
 pin "application"
 pin "sfx"
+pin "pixi_shatter"
+pin "pixi.js", to: "https://cdn.jsdelivr.net/npm/pixi.js@7.4.3/dist/pixi.min.mjs"
 pin "@hotwired/turbo-rails", to: "turbo.min.js"
 pin "@hotwired/stimulus", to: "stimulus.min.js"
 pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"

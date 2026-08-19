@@ -1,16 +1,82 @@
 import { Controller } from "@hotwired/stimulus"
 import { playAdd, playMultiply, playRemove, playClaim, playFail, playVictory } from "sfx"
+import { spawnPixiShatter } from "pixi_shatter"
 
 // Click a neighboring cell to link it with "+". Double-click a neighboring
 // cell (second click within DOUBLE_CLICK_MS) to link it with "*" instead.
-// Clicking the last cell in the chain again removes it. All evaluation
-// shown here is a preview only -- the server re-validates and re-evaluates
-// every submission from scratch.
+// Clicking the last cell in the chain again removes it. Only orthogonal
+// neighbors count -- see renderGrid/chooseCell -- since there's no
+// connector gutter at the diagonals to represent that link. All
+// evaluation shown here is a preview only -- the server re-validates and
+// re-evaluates every submission from scratch.
 const DOUBLE_CLICK_MS = 320
 
 // How long the end-of-round stats screen stays up before automatically
 // sending the player home. "Play again" / "Continue" both skip the wait.
 const AUTO_HOME_DELAY_MS = 6000
+
+// How long a claimed cell stays hidden (see .cell.exploding in the
+// stylesheet) before fading in to reveal its new number -- tuned to
+// roughly match the shatter effect's own duration, whichever version
+// (PixiJS or the CSS fallback) actually played, so the new number
+// doesn't pop in while debris is still visibly mid-flight over it.
+const EXPLOSION_REVEAL_DELAY_MS = 650
+
+// Grid cell values are always a single digit 1-9 (see PuzzleGenerator's
+// digit-bag randomization), so three even bands cover the whole range.
+// Colors (see application.css) are deliberately NOT a red/green pairing
+// -- that's the axis most common colorblindness (red-green) struggles
+// with, so blue/orange/purple gives three bands that stay visually
+// distinct for more people.
+function cellValueColorClass(value) {
+  if (value <= 3) return "cell-value-low"
+  if (value <= 6) return "cell-value-mid"
+  return "cell-value-high"
+}
+
+// How much space (in fr units) each connector gutter takes relative to
+// a cell's own "1fr" track. Small enough that cells still dominate the
+// board, big enough for a legible +/x glyph. Used for both rows and
+// columns, and the grid-rows container is forced to aspect-ratio:1, so
+// cells come out square regardless of how many there are.
+const CONNECTOR_FR = 0.4
+
+// Builds the grid-template-columns/rows value for an NxN board: cell,
+// connector, cell, connector, ... cell. Same string works for both axes
+// since the connector gutter is symmetric.
+function gridTemplateTracks(size) {
+  const parts = []
+  for (let i = 0; i < size; i++) {
+    parts.push("1fr")
+    if (i < size - 1) parts.push(`minmax(10px, ${CONNECTOR_FR}fr)`)
+  }
+  return parts.join(" ")
+}
+
+// Colors for the CSS-fallback spark burst (see application.css's
+// --spark-a/-b/-c) -- glowing chips in the game's own accent palette,
+// replacing the old grey meteor-chunk look now that cells aren't rocks.
+const SPARK_COLORS = ["var(--spark-a)", "var(--spark-b)", "var(--spark-c)"]
+
+// Undirected key for a pair of orthogonally-adjacent cells, order
+// independent, so a connector can look itself up regardless of which
+// direction the chain happened to walk through it.
+function connectorKey(a, b) {
+  const pair = [`${a.row},${a.col}`, `${b.row},${b.col}`].sort()
+  return pair.join("|")
+}
+
+// Maps every "connector between step i and step i+1" in the current
+// chain to the op that links them, so renderGrid can look up whether a
+// given gutter between two specific cells should show +/x instead of
+// its default dash.
+function buildChainConnectorMap(path, ops) {
+  const map = new Map()
+  for (let i = 0; i < path.length - 1; i++) {
+    map.set(connectorKey(path[i], path[i + 1]), ops[i])
+  }
+  return map
+}
 
 export default class extends Controller {
   static targets = ["grid", "targets", "scoreboard", "timer", "expression", "pointsTotal", "message", "completion", "popupLayer"]
@@ -234,14 +300,20 @@ export default class extends Controller {
     this.renderPointsTotal()
   }
 
+  // No more asteroid field -- this now builds a connector grid: cells
+  // on the odd grid lines, a thin dash/plus/times gutter between every
+  // orthogonally-adjacent pair, and nothing at all in the four corner
+  // intersections where a diagonal would have been. That's what makes
+  // diagonal linking impossible: there's no connector there to
+  // represent it, so chooseCell's adjacency check (below) rejects it.
   renderGrid() {
     const grid = this.stateValue.grid
     const size = grid.length
     const gameOver = this.stateValue.status === "completed"
+    const connectorMap = buildChainConnectorMap(this.path, this.ops)
 
     let cellsHtml = ""
     grid.forEach((row, r) => {
-      cellsHtml += `<div class="grid-row">`
       row.forEach((value, c) => {
         const stepIndex = this.path.findIndex((p) => p.row === r && p.col === c)
         const isNewest = stepIndex !== -1 && stepIndex === this.path.length - 1
@@ -249,47 +321,46 @@ export default class extends Controller {
         if (stepIndex !== -1) classes.push("selected")
         if (isNewest) classes.push("just-grabbed")
         if (gameOver) classes.push("disabled")
-        if (this.justRefreshedCells.includes(`${r},${c}`)) classes.push("just-refreshed")
-        // Deterministic per-position variety (not random per render) so each
-        // asteroid keeps the same irregular silhouette across re-renders,
-        // instead of visibly reshaping itself on every click.
-        const shape = (r * 3 + c * 5) % 5
+        if (this.justRefreshedCells.includes(`${r},${c}`)) classes.push("exploding")
 
-        cellsHtml += `<button type="button" class="${classes.join(" ")}" data-row="${r}" data-col="${c}" data-shape="${shape}" data-action="click->grid#cellClicked">
-          <span class="cell-value">${value}</span>
+        const gridRow = 2 * r + 1
+        const gridCol = 2 * c + 1
+
+        cellsHtml += `<button type="button" class="${classes.join(" ")}" style="grid-row:${gridRow};grid-column:${gridCol};" data-row="${r}" data-col="${c}" data-action="click->grid#cellClicked">
+          <span class="cell-value ${cellValueColorClass(value)}">${value}</span>
           ${stepIndex !== -1 ? `<span class="cell-order">${stepIndex + 1}</span>` : ""}
         </button>`
+
+        if (c < size - 1) {
+          cellsHtml += this.renderConnector(r, c, r, c + 1, gridRow, gridCol + 1, "connector-horizontal", connectorMap)
+        }
+        if (r < size - 1) {
+          cellsHtml += this.renderConnector(r, c, r + 1, c, gridRow + 1, gridCol, "connector-vertical", connectorMap)
+        }
       })
-      cellsHtml += `</div>`
     })
 
-    this.gridTarget.innerHTML = `${this.renderChainSvg(size)}<div class="grid-rows">${cellsHtml}</div>`
+    this.gridTarget.innerHTML = `<div class="grid-rows" style="grid-template-columns:${gridTemplateTracks(size)};grid-template-rows:${gridTemplateTracks(size)};">${cellsHtml}</div>`
     this.justRefreshedCells = [] // one-shot: don't replay the flip on the next unrelated render
   }
 
-  // Draws a glowing line between each consecutive pair of cells in the
-  // current chain, positioned with percentage coordinates so it scales
-  // with the grid regardless of screen size. Because this whole block of
-  // HTML is replaced on every render, each <line> is a brand-new DOM
-  // node every time a link is added -- which means its CSS "draw in"
-  // animation plays fresh every time, for free.
-  renderChainSvg(size) {
-    if (this.path.length < 2) {
-      return `<svg class="chain-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>`
+  // A single connector glyph in the gutter between (r1,c1) and (r2,c2).
+  // Dash by default; +/x (with a little pop-in) when that exact pair is
+  // a consecutive link in the current chain.
+  renderConnector(r1, c1, r2, c2, gridRow, gridCol, orientation, connectorMap) {
+    const op = connectorMap.get(connectorKey({ row: r1, col: c1 }, { row: r2, col: c2 }))
+    const classes = ["connector", orientation]
+    let glyph = "\u2013" // dash
+
+    if (op === "+") {
+      classes.push("connector-active", "connector-plus")
+      glyph = "+"
+    } else if (op === "*") {
+      classes.push("connector-active", "connector-times")
+      glyph = "\u00D7"
     }
 
-    const centerFor = (r, c) => [((c + 0.5) / size) * 100, ((r + 0.5) / size) * 100]
-    let lines = ""
-
-    for (let i = 0; i < this.path.length - 1; i++) {
-      const [x1, y1] = centerFor(this.path[i].row, this.path[i].col)
-      const [x2, y2] = centerFor(this.path[i + 1].row, this.path[i + 1].col)
-      const isMultiply = this.ops[i] === "*"
-      const kind = isMultiply ? "chain-line-multiply" : "chain-line-add"
-      lines += `<line class="chain-line ${kind}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"></line>`
-    }
-
-    return `<svg class="chain-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${lines}</svg>`
+    return `<span class="${classes.join(" ")}" style="grid-row:${gridRow};grid-column:${gridCol};">${glyph}</span>`
   }
 
   // Targets no longer sit around marked "claimed" -- the moment one is
@@ -427,9 +498,23 @@ export default class extends Controller {
       playAdd(0)
     } else {
       const prev = this.path[lastIndex]
-      const adjacent = Math.abs(prev.row - row) <= 1 && Math.abs(prev.col - col) <= 1
+      // Orthogonal only now -- there's no connector gutter at the
+      // corner intersections (see renderGrid), so a diagonal neighbor
+      // has no dash/plus/times to represent that link and can't be
+      // chained to directly.
+      const adjacent =
+        (prev.row === row && Math.abs(prev.col - col) === 1) ||
+        (prev.col === col && Math.abs(prev.row - row) === 1)
       if (!adjacent) {
-        this.flashMessage("That asteroid isn't adjacent to your last link.", "warning")
+        // Pivot to a fresh chain starting here, rather than rejecting
+        // the click -- forcing the player to manually clear an old
+        // chain just to start on a different number was never
+        // actually useful friction, just an extra step.
+        this.path = [{ row, col, value }]
+        this.ops = []
+        playAdd(0)
+        this.render()
+        this.maybeAutoSubmit()
         return
       }
       this.path.push({ row, col, value })
@@ -474,7 +559,7 @@ export default class extends Controller {
     if (this.submitting) return
 
     if (this.path.length < 2) {
-      this.flashMessage("Link at least two asteroids first.", "warning")
+      this.flashMessage("Link at least two numbers first.", "warning")
       return
     }
 
@@ -524,11 +609,27 @@ export default class extends Controller {
   // Center point (as a percentage of the grid's width/height) of the
   // chain that was just submitted, so the popup appears right where the
   // solve actually happened rather than in some fixed generic spot.
+  // Measured from actual DOM positions rather than assumed uniform
+  // spacing -- the connector gutters between cells mean columns/rows
+  // aren't all the same size, so a formula based on row/col index alone
+  // would drift off target.
   pathCentroidPercent() {
-    const size = this.stateValue.grid.length
-    const avgRow = this.path.reduce((sum, p) => sum + p.row, 0) / this.path.length
-    const avgCol = this.path.reduce((sum, p) => sum + p.col, 0) / this.path.length
-    return { x: ((avgCol + 0.5) / size) * 100, y: ((avgRow + 0.5) / size) * 100 }
+    const gridRect = this.gridTarget.getBoundingClientRect()
+    const centers = this.path.map((p) => {
+      const cellEl = this.gridTarget.querySelector(`[data-row="${p.row}"][data-col="${p.col}"]`)
+      if (!cellEl) return null
+      const rect = cellEl.getBoundingClientRect()
+      return {
+        x: rect.left - gridRect.left + rect.width / 2,
+        y: rect.top - gridRect.top + rect.height / 2
+      }
+    }).filter(Boolean)
+
+    if (centers.length === 0) return { x: 50, y: 50 }
+
+    const avgX = centers.reduce((sum, p) => sum + p.x, 0) / centers.length
+    const avgY = centers.reduce((sum, p) => sum + p.y, 0) / centers.length
+    return { x: (avgX / gridRect.width) * 100, y: (avgY / gridRect.height) * 100 }
   }
 
   // Floats a translucent "3 + 5 = 8" label up from the solved chain's
@@ -549,40 +650,75 @@ export default class extends Controller {
     setTimeout(() => el.remove(), 1800) // safety net in case animationend never fires
   }
 
-  // Spawns a burst of small rock fragments flying outward from each cell
-  // that just got a new value -- the "asteroid breaking apart" moment.
-  // Also appended to popupLayerTarget for the same reason as the solve
-  // popup: it needs to survive the grid re-render that's about to happen.
+  // Captures each claimed cell's ACTUAL on-screen position and size
+  // synchronously -- before the caller's upcoming render() rebuilds the
+  // grid's HTML and destroys these exact DOM nodes -- so the spark burst
+  // can be positioned and sized precisely, rather than guessing from a
+  // generic small radius.
   spawnShatterForCells(cellKeys) {
     cellKeys.forEach((key) => {
       const [row, col] = key.split(",").map(Number)
-      this.spawnShatterEffect(row, col)
+      const cellEl = this.gridTarget.querySelector(`[data-row="${row}"][data-col="${col}"]`)
+      const hostEl = this.popupLayerTarget
+      if (!cellEl || !this.hasPopupLayerTarget) return
+
+      const cellRect = cellEl.getBoundingClientRect()
+      const hostRect = hostEl.getBoundingClientRect()
+      const geometry = {
+        xPx: cellRect.left - hostRect.left + cellRect.width / 2,
+        yPx: cellRect.top - hostRect.top + cellRect.height / 2,
+        sizePx: cellRect.width
+      }
+
+      this.spawnShatterEffect(row, col, geometry) // async internally; fire-and-forget is fine here
+      this.scheduleExplosionReveal(row, col)
     })
   }
 
-  spawnShatterEffect(row, col) {
-    if (!this.hasPopupLayerTarget || !this.stateValue.grid) return
+  // The claimed cell renders instantly hidden (see .cell.exploding) so
+  // the new number doesn't appear underneath the still-flying debris.
+  // After the explosion has mostly played out, fade it back in to
+  // reveal the new number -- looked up fresh since render() has
+  // replaced the DOM node by the time this timeout fires.
+  scheduleExplosionReveal(row, col) {
+    setTimeout(() => {
+      const cellEl = this.gridTarget.querySelector(`[data-row="${row}"][data-col="${col}"]`)
+      cellEl?.classList.remove("exploding")
+    }, EXPLOSION_REVEAL_DELAY_MS)
+  }
+
+  // Tries the richer PixiJS particle burst first; if that's unavailable
+  // for any reason (see pixi_shatter.js -- CDN issue, no WebGL, etc.),
+  // falls back automatically to a CSS-based version. Either way the
+  // player sees SOME shatter effect; only which one varies.
+  async spawnShatterEffect(row, col, geometry) {
+    if (!this.hasPopupLayerTarget) return
+
+    const handledByPixi = await spawnPixiShatter(this.popupLayerTarget, geometry.xPx, geometry.yPx, geometry.sizePx)
+    if (handledByPixi) return
 
     const size = this.stateValue.grid.length
     const cx = ((col + 0.5) / size) * 100
     const cy = ((row + 0.5) / size) * 100
-    const pieceCount = 6
+    const pieceCount = 14
 
     for (let i = 0; i < pieceCount; i++) {
       const piece = document.createElement("div")
       piece.className = "shatter-piece"
 
-      const angle = (Math.PI * 2 * i) / pieceCount + (Math.random() * 0.6 - 0.3)
-      const distance = 24 + Math.random() * 18
+      const angle = (Math.PI * 2 * i) / pieceCount + (Math.random() * 0.5 - 0.25)
+      const distance = 36 + Math.random() * 26
       const dx = (Math.cos(angle) * distance).toFixed(1)
       const dy = (Math.sin(angle) * distance).toFixed(1)
       const rot = (Math.random() * 360 - 180).toFixed(0)
+      const sparkColor = SPARK_COLORS[i % SPARK_COLORS.length]
 
       piece.style.left = `${cx}%`
       piece.style.top = `${cy}%`
       piece.style.setProperty("--dx", `${dx}px`)
       piece.style.setProperty("--dy", `${dy}px`)
       piece.style.setProperty("--rot", `${rot}deg`)
+      piece.style.setProperty("--piece-color", sparkColor)
 
       this.popupLayerTarget.appendChild(piece)
       piece.addEventListener("animationend", () => piece.remove())

@@ -2,7 +2,7 @@
   <h1><%= @game.name %></h1>
   <p class="tagline"><%= @game.tagline %></p>
   <p class="hero-copy">
-    Link adjacent asteroids together to hit the cargo targets below the grid.
+    Link adjacent numbers together to hit the cargo targets below the grid.
     Click a neighbor to <strong>add</strong> it to your chain, double-click a
     neighbor to <strong>multiply</strong>. Solve it solo, or beam aboard a
     live match and race an opponent for the same haul.
@@ -26,19 +26,25 @@
     <div class="demo-board" aria-hidden="true">
       <div class="grid-stage">
         <div class="grid">
-          <svg class="chain-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <line class="chain-line chain-line-add" x1="25" y1="25" x2="75" y2="25"></line>
-            <line class="chain-line chain-line-multiply" x1="75" y1="25" x2="75" y2="75"></line>
-          </svg>
-          <div class="grid-rows">
-            <div class="grid-row">
-              <div class="cell selected" data-shape="0"><span class="cell-value">3</span><span class="cell-order">1</span></div>
-              <div class="cell selected" data-shape="1"><span class="cell-value">5</span><span class="cell-order">2</span></div>
-            </div>
-            <div class="grid-row">
-              <div class="cell" data-shape="2"><span class="cell-value">7</span></div>
-              <div class="cell selected" data-shape="3"><span class="cell-value">4</span><span class="cell-order">3</span></div>
-            </div>
+          <div class="grid-rows" style="grid-template-columns: 1fr minmax(10px, 0.4fr) 1fr; grid-template-rows: 1fr minmax(10px, 0.4fr) 1fr;">
+            <button type="button" class="cell selected" style="grid-row:1;grid-column:1;">
+              <span class="cell-value cell-value-low">3</span><span class="cell-order">1</span>
+            </button>
+            <span class="connector connector-horizontal connector-active connector-plus" style="grid-row:1;grid-column:2;">+</span>
+            <button type="button" class="cell selected" style="grid-row:1;grid-column:3;">
+              <span class="cell-value cell-value-mid">5</span><span class="cell-order">2</span>
+            </button>
+
+            <span class="connector connector-vertical" style="grid-row:2;grid-column:1;">&ndash;</span>
+            <span class="connector connector-vertical connector-active connector-times" style="grid-row:2;grid-column:3;">&times;</span>
+
+            <button type="button" class="cell" style="grid-row:3;grid-column:1;">
+              <span class="cell-value cell-value-high">7</span>
+            </button>
+            <span class="connector connector-horizontal" style="grid-row:3;grid-column:2;">&ndash;</span>
+            <button type="button" class="cell selected" style="grid-row:3;grid-column:3;">
+              <span class="cell-value cell-value-mid">4</span><span class="cell-order">3</span>
+            </button>
           </div>
         </div>
       </div>
@@ -47,9 +53,10 @@
     </div>
 
     <ol class="how-to-steps">
-      <li><strong>Click</strong> an asteroid to start a chain.</li>
-      <li><strong>Click</strong> a neighboring asteroid to <strong>add</strong> it &mdash; like 3 &rarr; 5 above.</li>
-      <li><strong>Double-click</strong> a neighboring asteroid to <strong>multiply</strong> instead &mdash; like 5 &rarr; 4 above.</li>
+      <li><strong>Click</strong> a number to start a chain.</li>
+      <li><strong>Click</strong> a neighboring number to <strong>add</strong> it &mdash; like 3 &rarr; 5 above, shown by the glowing <strong>+</strong> between them.</li>
+      <li><strong>Double-click</strong> a neighboring number to <strong>multiply</strong> instead &mdash; like 5 &rarr; 4 above, shown by the <strong>&times;</strong>.</li>
+      <li>Only straight up/down/left/right neighbors can link &mdash; diagonals don't have a connector between them.</li>
       <li>Match a cargo target below the grid and it's claimed <strong>automatically</strong> &mdash; no submit button needed.</li>
       <li>Claimed numbers get replaced with fresh ones. Chain as many as you can before time runs out!</li>
     </ol>
