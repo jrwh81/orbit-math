@@ -47,23 +47,29 @@ class ClaimServiceTest < ActiveSupport::TestCase
   end
 
   test "points_for_value follows the correct tier boundaries -- shared with the material tier visuals" do
-    # These breakpoints (10, 20, 50, 150) MUST match grid_controller.js's
-    # materialTierClass exactly, since the point value and the visual
-    # rarity (crystal/gold/emerald/platinum/diamond) are meant to always
+    # These breakpoints (20, 100) MUST match grid_controller.js's
+    # materialTierClass exactly, since a prize's base point value and
+    # its visual rarity (crystal/emerald/diamond) are meant to always
     # agree. Checked at every boundary, not just one value per tier.
-    assert_equal 25, ClaimService.points_for_value(1)
-    assert_equal 25, ClaimService.points_for_value(10)
-    assert_equal 50, ClaimService.points_for_value(11)
-    assert_equal 50, ClaimService.points_for_value(20)
-    assert_equal 100, ClaimService.points_for_value(21)
-    assert_equal 100, ClaimService.points_for_value(50)
-    assert_equal 250, ClaimService.points_for_value(51)
-    assert_equal 250, ClaimService.points_for_value(150)
-    assert_equal 500, ClaimService.points_for_value(151)
+    assert_equal 100, ClaimService.points_for_value(1)
+    assert_equal 100, ClaimService.points_for_value(20)
+    assert_equal 300, ClaimService.points_for_value(21)
+    assert_equal 300, ClaimService.points_for_value(100)
+    assert_equal 500, ClaimService.points_for_value(101)
     assert_equal 500, ClaimService.points_for_value(500)
   end
 
-  test "a successful claim stores the correct tiered points on the claim record, not a flat difficulty rate" do
+  test "multiplier_for_chain rewards the single highest digit actually used in the chain" do
+    # 1-3 -> 3x, 4-6 -> 5x, 7-9 -> 8x, driven by the max, not the
+    # average -- reaching for even one bigger digit pays off.
+    assert_equal 3, ClaimService.multiplier_for_chain([{ "value" => 1 }, { "value" => 3 }])
+    assert_equal 5, ClaimService.multiplier_for_chain([{ "value" => 1 }, { "value" => 4 }])
+    assert_equal 5, ClaimService.multiplier_for_chain([{ "value" => 6 }, { "value" => 6 }])
+    assert_equal 8, ClaimService.multiplier_for_chain([{ "value" => 2 }, { "value" => 7 }])
+    assert_equal 8, ClaimService.multiplier_for_chain([{ "value" => 9 }])
+  end
+
+  test "a successful claim stores the prize's base points times its chain's digit multiplier, not a flat rate" do
     user = User.create!(username: "cs_points", password: "password123")
     puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 45)
     game_session = GameSession.create!(mode: :solo, status: :active, puzzle: puzzle, host: user)
@@ -71,16 +77,22 @@ class ClaimServiceTest < ActiveSupport::TestCase
 
     target = game_session.active_targets.first
     path = PuzzleSolver.find_path_for(game_session.active_grid, target["value"])
+    digits_used = path[:coords].map { |(r, c)| { "value" => game_session.active_grid[r][c] } }
+    expected_multiplier = ClaimService.multiplier_for_chain(digits_used)
+    expected_points = ClaimService.points_for_value(target["value"]) * expected_multiplier
+
     result = ClaimService.call(game_session: game_session, user: user, coords: path[:coords], ops: path[:ops])
     assert result.success?
+    assert_equal expected_multiplier, result.multiplier
+    assert_equal expected_points, result.points
 
     game_session.reload
     stored_points = game_session.claims[target["id"]]["points"]
-    assert_equal ClaimService.points_for_value(target["value"]), stored_points
+    assert_equal expected_points, stored_points
     assert_equal stored_points, game_session.points_for(user)
   end
 
-  test "claimed points always match one of the five real tiers, driven by the target's actual value" do
+  test "claimed points always equal the prize's base tier times the chain's digit multiplier" do
     user = User.create!(username: "cs_varied_points", password: "password123")
     puzzle = PuzzleGenerator.call(difficulty: "expert", seed: 46) # widest value range in the game
     game_session = GameSession.create!(mode: :solo, status: :active, puzzle: puzzle, host: user)
@@ -92,14 +104,17 @@ class ClaimServiceTest < ActiveSupport::TestCase
       break unless target
 
       path = PuzzleSolver.find_path_for(game_session.active_grid, target["value"])
+      digits_used = path[:coords].map { |(r, c)| { "value" => game_session.active_grid[r][c] } }
+      expected_multiplier = ClaimService.multiplier_for_chain(digits_used)
+      expected_points = ClaimService.points_for_value(target["value"]) * expected_multiplier
+
       result = ClaimService.call(game_session: game_session, user: user, coords: path[:coords], ops: path[:ops])
       next unless result.success?
 
       game_session.reload
       stored_points = game_session.claims[target["id"]]["points"]
-      assert_includes [25, 50, 100, 250, 500], stored_points
-      assert_equal ClaimService.points_for_value(target["value"]), stored_points,
-                   "claimed target worth #{target["value"]} should earn exactly #{ClaimService.points_for_value(target["value"])} points"
+      assert_equal expected_points, stored_points,
+                   "claimed target worth #{target["value"]} with digit multiplier #{expected_multiplier}x should earn exactly #{expected_points} points"
     end
   end
 

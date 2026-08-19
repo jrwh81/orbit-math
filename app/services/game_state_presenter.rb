@@ -29,9 +29,13 @@ class GameStatePresenter
   # Targets rotate the instant they're claimed rather than sitting there
   # marked "claimed", so this is just the current live list -- no
   # claimed/claimed_by flags needed here anymore (see CHANGELOG for why).
+  # `points` here is the prize's BASE value (see ClaimService.
+  # points_for_value) -- what a target chip advertises before any chain
+  # multiplier is applied; the multiplier only gets decided once a
+  # chain actually solves it.
   def targets_json
     @game_session.active_targets.map do |t|
-      { id: t["id"], value: t["value"] }
+      { id: t["id"], value: t["value"], points: ClaimService.points_for_value(t["value"]) }
     end
   end
 

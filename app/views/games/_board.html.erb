@@ -19,8 +19,11 @@
     <!-- countdown clock rendered by grid_controller.js -->
   </div>
 
-  <div class="targets-row" data-grid-target="targets">
-    <!-- target chips rendered by grid_controller.js -->
+  <div class="targets-row-wrap">
+    <p class="targets-label">Prizes on offer</p>
+    <div class="targets-row" data-grid-target="targets">
+      <!-- prize chips rendered by grid_controller.js -->
+    </div>
   </div>
 
   <div class="expression-bar">
@@ -33,18 +36,21 @@
       <!-- cells rendered by grid_controller.js -->
     </div>
     <div class="solve-popup-layer" data-grid-target="popupLayer">
-      <!-- floating "3 + 5 = 8" popups appended here on each claim -->
+      <!-- floating "3 + 5 = 8" and "+300 pts" popups appended here on each claim -->
     </div>
   </div>
 
   <p class="grid-help">
-    Click a neighboring number to <strong>add</strong> it to your chain.
-    Double-click a neighboring number to <strong>multiply</strong> instead.
-    Diagonal neighbors link too -- cross through the x at the corner of any four numbers.
-    Click the last cell again to undo it. The moment your chain matches a
-    cargo target, it's claimed automatically, a fresh target rotates in,
-    and the numbers you just used get replaced &mdash; rack up as many
-    points as you can before time runs out.
+    Link numbers with <strong>addition</strong> and <strong>multiplication</strong> to match a
+    prize above and win it &mdash; the moment your chain adds up, it's claimed
+    automatically and a fresh prize rotates in. Click a neighbor to add it,
+    double-click to multiply, or cross diagonally through the x at the
+    corner of any four numbers. Every prize has its own point value, and
+    reaching for bigger digits pays off: chains that only touch 1&ndash;3
+    score <strong>3&times;</strong> points, 4&ndash;6 scores
+    <strong>5&times;</strong>, and 7&ndash;9 scores <strong>8&times;</strong>
+    &mdash; so the same prize can be worth very different amounts
+    depending on how ambitious your chain is.
   </p>
 
   <div class="game-message" data-grid-target="message"></div>

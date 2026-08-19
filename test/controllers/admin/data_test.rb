@@ -61,15 +61,17 @@ class AdminDataTest < ActionDispatch::IntegrationTest
 
     target = game_session.active_targets.first
     path = PuzzleSolver.find_path_for(game_session.active_grid, target["value"])
+    digits_used = path[:coords].map { |(r, c)| { "value" => game_session.active_grid[r][c] } }
     ClaimService.call(game_session: game_session, user: player, coords: path[:coords], ops: path[:ops])
 
     get admin_game_session_path(game_session)
     assert_response :success
-    # Points depend on the SPECIFIC target's value, not a flat rate per
-    # difficulty -- compute the expected value the same way the app
-    # does (ClaimService.points_for_value is the single source of truth)
-    # rather than hardcoding a number tied to what seed 4 happens to produce.
-    expected_points = ClaimService.points_for_value(target["value"])
+    # Points depend on the SPECIFIC target's value AND the chain's digit
+    # multiplier, not a flat rate per difficulty -- compute the expected
+    # value the same way the app does (ClaimService is the single source
+    # of truth) rather than hardcoding a number tied to what seed 4
+    # happens to produce.
+    expected_points = ClaimService.points_for_value(target["value"]) * ClaimService.multiplier_for_chain(digits_used)
     assert_select "td", text: expected_points.to_s
   end
 

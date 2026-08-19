@@ -273,9 +273,9 @@ export default class extends Controller {
           <h2>${headline}</h2>
           <ul class="stats-list">
             <li><span class="stats-value">${mine.points}</span><span class="stats-label">points earned</span></li>
-            <li><span class="stats-value">${mine.claims}</span><span class="stats-label">targets claimed</span></li>
+            <li><span class="stats-value">${mine.claims}</span><span class="stats-label">prizes won</span></li>
             <li><span class="stats-value">${mine.longest_chain}</span><span class="stats-label">longest chain</span></li>
-            <li><span class="stats-value">${mine.highest_value}</span><span class="stats-label">highest value claimed</span></li>
+            <li><span class="stats-value">${mine.highest_value}</span><span class="stats-label">highest prize claimed</span></li>
           </ul>
           <div class="stats-actions">
             <a href="${this.newGameUrlValue}" class="btn btn-secondary">Play again</a>
@@ -390,14 +390,19 @@ export default class extends Controller {
   // haven't rendered before) gets a "pop in" animation so the rotation
   // reads as a continuous flow rather than a silent swap.
   //
-  // Each chip's material (crystal/gold/emerald/platinum/diamond) is
-  // derived purely from its value -- bigger numbers look rarer, the
-  // same way a mining game's loot table would read at a glance.
+  // Each chip's material (crystal/emerald/diamond) is derived purely
+  // from its value -- bigger numbers look rarer, the same way a mining
+  // game's loot table would read at a glance -- and shares its exact
+  // breakpoints with ClaimService.points_for_value server-side, so a
+  // prize's color and its "worth N pts" label always agree. The base
+  // point value comes straight from the server (see
+  // GameStatePresenter#targets_json) rather than being recomputed here,
+  // since ClaimService is the one real source of truth for it.
   renderTargets() {
     const html = (this.stateValue.targets || []).map((t) => {
       const classes = ["target-chip", this.materialTierClass(t.value)]
       if (this.justArrivedIds.includes(t.id)) classes.push("just-arrived")
-      return `<span class="${classes.join(" ")}">${t.value}</span>`
+      return `<span class="${classes.join(" ")}"><span class="target-chip-value">${t.value}</span><span class="target-chip-points">${t.points} pts</span></span>`
     }).join("")
 
     this.targetsTarget.innerHTML = html
@@ -405,10 +410,8 @@ export default class extends Controller {
   }
 
   materialTierClass(value) {
-    if (value <= 10) return "tier-crystal"
-    if (value <= 20) return "tier-gold"
-    if (value <= 50) return "tier-emerald"
-    if (value <= 150) return "tier-platinum"
+    if (value <= 20) return "tier-crystal"
+    if (value <= 100) return "tier-emerald"
     return "tier-diamond"
   }
 
@@ -617,8 +620,10 @@ export default class extends Controller {
 
     if (data.result && data.result.success) {
       playClaim()
-      this.flashMessage(`Claimed ${data.result.value}!`, "success")
-      this.showSolvePopup(`${expressionForPopup} = ${data.result.value}`, popupPosition)
+      const { value, points, multiplier } = data.result
+      this.flashMessage(`Claimed ${value}! +${points} pts (${multiplier}x)`, "success")
+      this.showSolvePopup(`${expressionForPopup} = ${value}`, popupPosition)
+      this.showPointsPopup(points, multiplier, popupPosition)
     } else if (data.result) {
       playFail()
       this.flashMessage(data.result.message || "No matching target.", "warning")
@@ -669,6 +674,33 @@ export default class extends Controller {
     this.popupLayerTarget.appendChild(el)
     el.addEventListener("animationend", () => el.remove())
     setTimeout(() => el.remove(), 1800) // safety net in case animationend never fires
+  }
+
+  // A second, separate popup for the points a claim actually earned --
+  // starts a beat after showSolvePopup (see the animation-delay on
+  // .points-popup) and rises further, so the two never overlap even
+  // though they launch from the exact same spot. Colored by the chain's
+  // multiplier tier using the SAME sky/amber/fuchsia palette as
+  // cellValueColorClass, so "what color just flashed" always tells you
+  // which digit band earned that multiplier.
+  showPointsPopup(points, multiplier, position) {
+    if (!this.hasPopupLayerTarget || !points) return
+
+    const el = document.createElement("div")
+    el.className = `points-popup ${this.multiplierColorClass(multiplier)}`
+    el.style.left = `${position.x}%`
+    el.style.top = `${position.y}%`
+    el.textContent = `+${points} pts \u00B7 ${multiplier}x`
+
+    this.popupLayerTarget.appendChild(el)
+    el.addEventListener("animationend", () => el.remove())
+    setTimeout(() => el.remove(), 2200) // safety net in case animationend never fires
+  }
+
+  multiplierColorClass(multiplier) {
+    if (multiplier <= 3) return "points-popup-low"
+    if (multiplier <= 5) return "points-popup-mid"
+    return "points-popup-high"
   }
 
   // Captures each claimed cell's ACTUAL on-screen position and size

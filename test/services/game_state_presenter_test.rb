@@ -39,7 +39,7 @@ class GameStatePresenterTest < ActiveSupport::TestCase
     assert my_summary[:longest_chain] >= 2, "every claim requires at least a 2-cell chain"
   end
 
-  test "targets_json no longer includes claimed/claimed_by flags" do
+  test "targets_json no longer includes claimed/claimed_by flags, and now includes each prize's base points" do
     user = User.create!(username: "gsp_targets", password: "password123")
     puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 3)
     game_session = GameSession.create!(mode: :solo, status: :active, puzzle: puzzle, host: user)
@@ -47,7 +47,8 @@ class GameStatePresenterTest < ActiveSupport::TestCase
 
     payload = GameStatePresenter.new(game_session).as_json
     payload[:targets].each do |t|
-      assert_equal %i[id value], t.keys.sort
+      assert_equal %i[id points value], t.keys.sort
+      assert_equal ClaimService.points_for_value(t[:value]), t[:points]
     end
   end
 end

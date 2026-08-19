@@ -70,6 +70,8 @@ class MovesController < ApplicationController
       value: result.value,
       message: result.message,
       target_id: result.target && result.target["id"],
+      points: result.points,
+      multiplier: result.multiplier,
       user_id: current_user.id
     }
   end

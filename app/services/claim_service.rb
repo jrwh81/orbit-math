@@ -20,29 +20,55 @@
 # win the race, and the loser gets a clear "already claimed" result
 # instead of a corrupted double-claim.
 class ClaimService
-  Result = Struct.new(:success, :value, :target, :replacement, :message, :move, keyword_init: true) do
+  Result = Struct.new(:success, :value, :target, :replacement, :message, :move, :points, :multiplier, keyword_init: true) do
     alias_method :success?, :success
   end
 
-  # Points earned for claiming a target of THIS SPECIFIC VALUE -- not a
-  # flat rate per difficulty. Deliberately shares the exact same value
-  # breakpoints (10, 20, 50, 150) as the material tiers
-  # grid_controller.js uses for visual styling (crystal/gold/emerald/
-  # platinum/diamond), so a target that LOOKS rarer is always worth more
-  # points too -- the two are meant to move together, never drift apart.
-  # A public class method (not just an internal helper) so tests and any
-  # other code that needs "how many points is a target worth" have one
+  # A prize's base point value, driven purely by how big its target
+  # value is -- three tiers, not a flat rate per difficulty. Deliberately
+  # shares its exact breakpoints (20, 100) with the material tier
+  # visuals grid_controller.js uses (crystal/emerald/diamond), so a
+  # prize that LOOKS rarer is always worth more base points too -- the
+  # two are meant to move together, never drift apart. A public class
+  # method (not just an internal helper) so tests, views, and any other
+  # code that needs "how many points is this prize worth" have one
   # single source of truth instead of duplicating these numbers.
-  POINT_TIERS = [
-    { max: 10, points: 25 },
-    { max: 20, points: 50 },
-    { max: 50, points: 100 },
-    { max: 150, points: 250 },
+  PRIZE_TIERS = [
+    { max: 20, points: 100 },
+    { max: 100, points: 300 },
     { max: Float::INFINITY, points: 500 }
   ].freeze
 
   def self.points_for_value(value)
-    POINT_TIERS.find { |tier| value <= tier[:max] }[:points]
+    PRIZE_TIERS.find { |tier| value <= tier[:max] }[:points]
+  end
+
+  # The chain multiplier rewards reaching for bigger digits on the
+  # board, not just landing on a big target -- 3x for a chain that only
+  # ever touched 1-3, 5x if it touched a 4-6 anywhere, 8x if it touched
+  # a 7-9 anywhere. Driven by the SINGLE HIGHEST digit actually used
+  # (not an average), so linking even one ambitious number pays off
+  # immediately. Shares its exact 1-3/4-6/7-9 boundaries with
+  # cellValueColorClass in grid_controller.js on purpose: the multiplier
+  # a chain earns always matches the color band its brightest linked
+  # number would show on screen.
+  MULTIPLIER_TIERS = [
+    { max: 3, multiplier: 3 },
+    { max: 6, multiplier: 5 },
+    { max: 9, multiplier: 8 }
+  ].freeze
+
+  def self.multiplier_for_chain(annotated_path)
+    highest_digit = annotated_path.map { |step| step["value"] }.max
+    tier = MULTIPLIER_TIERS.find { |t| highest_digit <= t[:max] }
+    (tier || MULTIPLIER_TIERS.last)[:multiplier]
+  end
+
+  # A claim's total points: the prize's own base value times the
+  # multiplier its solving chain earned. This is the number that
+  # actually lands on the scoreboard and flashes on screen.
+  def self.points_for_claim(target_value, annotated_path)
+    points_for_value(target_value) * multiplier_for_chain(annotated_path)
   end
 
   def self.call(game_session:, user:, coords:, ops:)
@@ -65,13 +91,14 @@ class ClaimService
     eval_result = ChainEvaluator.call(grid: @game_session.active_grid, coords: @coords, ops: @ops)
     return Result.new(success: false, message: eval_result.error) unless eval_result.valid?
 
-    claimed_target, replacement = attempt_claim_and_rotate(eval_result.value)
+    claimed_target, replacement, points, multiplier = attempt_claim_and_rotate(eval_result.value, eval_result.annotated_path)
     move = record_move(eval_result, claimed_target)
 
     if claimed_target
       Result.new(
         success: true, value: eval_result.value, target: claimed_target,
-        replacement: replacement, message: "claimed", move: move
+        replacement: replacement, message: "claimed", move: move,
+        points: points, multiplier: multiplier
       )
     else
       Result.new(success: false, value: eval_result.value, message: "No open target matches #{eval_result.value}", move: move)
@@ -82,9 +109,11 @@ class ClaimService
 
   # Row-level lock guarantees exactly one caller wins when two players
   # submit a matching chain for the same target at nearly the same time.
-  def attempt_claim_and_rotate(value)
+  def attempt_claim_and_rotate(value, annotated_path)
     claimed_target = nil
     replacement = nil
+    points = nil
+    multiplier = nil
 
     @game_session.with_lock do
       target = @game_session.active_targets.find { |t| t["value"] == value }
@@ -104,13 +133,17 @@ class ClaimService
         existing_values: remaining_values
       )
 
+      multiplier = self.class.multiplier_for_chain(annotated_path)
+      points = self.class.points_for_value(value) * multiplier
+
       @game_session.active_grid = grid
       @game_session.active_targets = replacement ? remaining_targets + [replacement] : remaining_targets
       @game_session.claims = @game_session.claims.merge(
         target["id"] => {
           "user_id" => @user.id,
           "value" => value,
-          "points" => self.class.points_for_value(value),
+          "points" => points,
+          "multiplier" => multiplier,
           "claimed_at" => Time.current.iso8601
         }
       )
@@ -118,7 +151,7 @@ class ClaimService
       claimed_target = target
     end
 
-    [claimed_target, replacement]
+    [claimed_target, replacement, points, multiplier]
   end
 
   # Gives every cell in the winning chain a new value, different from

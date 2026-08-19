@@ -3,15 +3,16 @@
 <section class="hero hero-compact">
   <h1>Solo run</h1>
   <p class="hero-copy">
-    A fresh number grid, all to yourself. Claim every cargo target on the
-    board to finish the run &mdash; there's no clock, so take your time
-    planning chains.
+    A fresh number grid, all to yourself. Link numbers with addition and
+    multiplication to win every prize on the board and rack up as many
+    points as you can before the clock runs out &mdash; reaching for
+    bigger digits pays off, so don't just play it safe.
   </p>
 
   <%= form_with url: solo_games_path, method: :post do %>
     <%= render "games/difficulty_picker", levels: @difficulty_levels, selected: PuzzleGenerator::DEFAULT_DIFFICULTY %>
     <div class="hero-actions">
-      <%= submit_tag "Launch field", class: "btn btn-primary" %>
+      <%= submit_tag "Start solo run", class: "btn btn-primary" %>
     </div>
   <% end %>
 </section>

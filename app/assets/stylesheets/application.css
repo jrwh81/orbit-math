@@ -271,41 +271,43 @@ a:hover { text-decoration: underline; }
 }
 .claims-count { font-size: 0.85rem; color: var(--muted); }
 
+.targets-row-wrap { text-align: center; }
+.targets-label {
+  margin: 0 0 6px; font-size: 0.75rem; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
 .targets-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
 .target-chip {
-  min-width: 44px; min-height: 44px; padding: 6px;
-  display: flex; align-items: center; justify-content: center;
+  min-width: 56px; min-height: 56px; padding: 6px 4px 8px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
   font-weight: 800; font-size: 0.95rem;
   border: 1px solid rgba(255, 255, 255, 0.25);
 }
+.target-chip-value { line-height: 1; }
+.target-chip-points {
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.02em;
+  opacity: 0.75; line-height: 1;
+}
 
 /* Material tiers, escalating with target value -- the number itself
-   hints at rarity, the same way a real mining/loot game would. Ranges
-   are picked to span every difficulty's value ceiling (Beginner tops
-   out at 20, Expert at 500), so easier rounds naturally only ever show
-   the "common" materials, and rarer ones only appear once a round can
-   actually produce values that high. */
-.target-chip.tier-crystal {   /* 1-10 */
+   hints at rarity, the same way a real mining/loot game would. Three
+   tiers now, matching ClaimService.points_for_value's own 100/300/500
+   prize breakpoints exactly (20, 100), so a prize's color and its
+   "worth N pts" label underneath always agree. Ranges span every
+   difficulty's value ceiling (Beginner tops out at 20, Expert at 500),
+   so easier rounds naturally only ever show crystal prizes, and
+   diamond only appears once a round can produce big enough values. */
+.target-chip.tier-crystal {   /* up to 20 -- 100 pts */
   background: linear-gradient(135deg, #a7f3ff, #4fc3ec 55%, #2f8fd1);
   clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
   color: #06202b;
 }
-.target-chip.tier-gold {      /* 11-20 */
-  background: linear-gradient(135deg, #fff3c4, #ffd464 50%, #d9a441);
-  border-radius: 4px;
-  color: #4a2f00;
-}
-.target-chip.tier-emerald {   /* 21-50 */
+.target-chip.tier-emerald {   /* 21-100 -- 300 pts */
   background: linear-gradient(135deg, #b6ffd2, #4fe08a 55%, #1e9e5a);
   clip-path: polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%);
   color: #042b16;
 }
-.target-chip.tier-platinum {  /* 51-150 */
-  background: linear-gradient(135deg, #f3f6fc, #cdd6e8 50%, #9aa8c2);
-  border-radius: 4px;
-  color: #1a2436;
-}
-.target-chip.tier-diamond {   /* 151+ */
+.target-chip.tier-diamond {   /* 101+ -- 500 pts */
   background: linear-gradient(135deg, #ffffff, #cdefff 40%, #ffd9f7 75%, #ffffff);
   clip-path: polygon(50% 0%, 90% 30%, 76% 100%, 24% 100%, 10% 30%);
   color: #241a33;
@@ -359,6 +361,29 @@ a:hover { text-decoration: underline; }
   18%  { opacity: 0.95; transform: translate(-50%, -50%) scale(1.15); }
   40%  { opacity: 0.85; transform: translate(-50%, -70%) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -170%) scale(0.9); }
+}
+
+/* A second popup, just for the points a claim earned -- launches from
+   the same spot as .solve-popup but a beat later (animation-delay) and
+   rises further, so the two never collide even though they start in
+   the same place. Colored by the chain's multiplier tier using the
+   exact same sky/amber/fuchsia palette as cellValueColorClass in
+   grid_controller.js, so the color that flashes always matches the
+   digit band that earned it. */
+.points-popup {
+  position: absolute; transform: translate(-50%, -50%);
+  font-size: clamp(1.05rem, 4.2vw, 1.6rem); font-weight: 800; white-space: nowrap;
+  opacity: 0.95;
+  animation: points-popup-float 1.9s ease-out 0.15s both;
+}
+.points-popup-low { color: #7dd3fc; text-shadow: 0 0 14px rgba(125, 211, 252, 0.85); }
+.points-popup-mid { color: #ffb84d; text-shadow: 0 0 14px rgba(255, 184, 77, 0.85); }
+.points-popup-high { color: #f0abfc; text-shadow: 0 0 14px rgba(240, 171, 252, 0.85); }
+@keyframes points-popup-float {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.25); }
+  45%  { opacity: 0.9; transform: translate(-50%, -115%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -240%) scale(0.9); }
 }
 
 /* The claimed cell renders instantly hidden the moment its new number

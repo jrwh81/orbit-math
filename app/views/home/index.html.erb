@@ -2,10 +2,11 @@
   <h1><%= @game.name %></h1>
   <p class="tagline"><%= @game.tagline %></p>
   <p class="hero-copy">
-    Link adjacent numbers together to hit the cargo targets below the grid.
-    Click a neighbor to <strong>add</strong> it to your chain, double-click a
-    neighbor to <strong>multiply</strong>. Solve it solo, or beam aboard a
-    live match and race an opponent for the same haul.
+    Link numbers with <strong>addition</strong> and <strong>multiplication</strong>
+    to win the prizes waiting at the top of the grid. Every prize pays out
+    real points, and reaching for bigger digits multiplies your score up to
+    <strong>8&times;</strong> &mdash; solve it solo, or beam aboard a live
+    match and race an opponent for the same haul.
   </p>
 
   <div class="hero-actions">
@@ -59,8 +60,9 @@
       <li><strong>Click</strong> a neighboring number to <strong>add</strong> it &mdash; like 3 &rarr; 5 above, shown by the glowing <strong>+</strong> between them.</li>
       <li><strong>Double-click</strong> a neighboring number to <strong>multiply</strong> instead &mdash; like 5 &rarr; 4 above, shown by the <strong>&times;</strong>.</li>
       <li>Diagonal neighbors count too &mdash; every group of four numbers has a faint <strong>x</strong> mark where they meet. Link across it and that arm lights up into a <strong>+</strong> or <strong>&times;</strong>, just like 3 and 7 could here.</li>
-      <li>Match a cargo target below the grid and it's claimed <strong>automatically</strong> &mdash; no submit button needed.</li>
-      <li>Claimed numbers get replaced with fresh ones. Chain as many as you can before time runs out!</li>
+      <li>Match a prize above the grid and it's won <strong>automatically</strong> &mdash; no submit button needed.</li>
+      <li>Every prize has its own point value, and reaching for bigger digits multiplies it: chains that stay in the 1&ndash;3 range score <strong>3&times;</strong> points, 4&ndash;6 scores <strong>5&times;</strong>, and 7&ndash;9 scores <strong>8&times;</strong> &mdash; the bigger the number you dare to link, the bigger the payout.</li>
+      <li>Won numbers get replaced with fresh ones. Chain as many prizes as you can before time runs out!</li>
     </ol>
   </div>
 </section>
@@ -72,7 +74,7 @@
       <ul class="stat-list">
         <li><span><%= @stat.games_played %></span> games played</li>
         <li><span><%= @stat.games_won %></span> games won (<%= @stat.win_rate %>%)</li>
-        <li><span><%= @stat.targets_claimed %></span> targets claimed</li>
+        <li><span><%= @stat.targets_claimed %></span> prizes won</li>
         <li><span><%= @stat.best_solo_score %></span> best solo run</li>
       </ul>
     </div>
