@@ -322,6 +322,11 @@ a:hover { text-decoration: underline; }
 }
 
 .target-chip.just-arrived { animation: target-pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+/* Optimistic head start on a solo claim -- see grid_controller.js's
+   submitPath -- dims the chip the instant a chain matches it, rather
+   than leaving it looking fully active for the whole round trip before
+   the real target list (with this one now gone) arrives. */
+.target-chip.claiming { opacity: 0.35; filter: grayscale(0.6); transition: opacity 0.15s ease, filter 0.15s ease; }
 @keyframes target-pop-in {
   0%   { transform: scale(0.3) translateY(-10px); opacity: 0; box-shadow: none; }
   60%  { transform: scale(1.15) translateY(0); opacity: 1; box-shadow: 0 0 16px 3px rgba(110, 227, 255, 0.5); }

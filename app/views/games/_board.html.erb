@@ -6,6 +6,7 @@
      data-grid-home-url-value="<%= root_path %>"
      data-grid-current-user-id-value="<%= current_user.id %>"
      data-grid-state-value="<%= game_state.to_json %>"
+     data-grid-mode-value="<%= mode %>"
      <% if mode == "multiplayer" %>
        data-multiplayer-game-session-id-value="<%= game_session.id %>"
        data-multiplayer-current-user-id-value="<%= current_user.id %>"

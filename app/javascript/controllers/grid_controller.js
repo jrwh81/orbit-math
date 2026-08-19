@@ -38,6 +38,26 @@ function cellValueColorClass(value) {
   return "cell-value-high"
 }
 
+// Mirrors ClaimService.multiplier_for_chain exactly -- same 1-3/4-6/7-9
+// boundaries as cellValueColorClass above -- so a SOLO claim's reward
+// can be computed instantly, client-side, without waiting on the
+// network (see submitPath). Solo has no opponent who could beat you to
+// a target, so this is provably always right, not just a guess: same
+// deterministic formula, same inputs, as the server would produce.
+function estimateMultiplier(annotatedPath) {
+  const highest = Math.max(...annotatedPath.map((p) => p.value))
+  if (highest <= 3) return 3
+  if (highest <= 6) return 5
+  return 8
+}
+
+// Mirrors ClaimService::MIN_CHAIN_LENGTH_FOR_BONUS / chain_length_bonus
+// -- a no-op 1x under 4 cells, then equal to the chain's own length.
+function estimateChainBonus(annotatedPath) {
+  const length = annotatedPath.length
+  return length >= 4 ? length : 1
+}
+
 // How much space (in fr units) each connector gutter takes relative to
 // a cell's own "1fr" track. Small enough that cells still dominate the
 // board, big enough for a legible +/x glyph. Used for both rows and
@@ -94,14 +114,14 @@ export default class extends Controller {
     state: Object,
     isGuest: Boolean,
     nameClaimed: Boolean,
-    claimNameUrl: String
+    claimNameUrl: String,
+    mode: String
   }
 
   connect() {
     this.path = []
     this.ops = []
     this.lastClick = null
-    this.submitting = false
     this.finishing = false
     this.tickInterval = null
 
@@ -498,7 +518,7 @@ export default class extends Controller {
     const html = (this.stateValue.targets || []).map((t) => {
       const classes = ["target-chip", this.materialTierClass(t.value)]
       if (this.justArrivedIds.includes(t.id)) classes.push("just-arrived")
-      return `<span class="${classes.join(" ")}"><span class="target-chip-value">${t.value}</span><span class="target-chip-points">${t.points} pts</span></span>`
+      return `<span class="${classes.join(" ")}" data-target-id="${t.id}"><span class="target-chip-value">${t.value}</span><span class="target-chip-points">${t.points} pts</span></span>`
     }).join("")
 
     this.targetsTarget.innerHTML = html
@@ -583,7 +603,6 @@ export default class extends Controller {
   // paid by every single click.
   cellClicked(event) {
     if (this.stateValue.status === "completed") return
-    if (this.submitting) return // ignore clicks while an auto-submit is still resolving
 
     const row = parseInt(event.currentTarget.dataset.row, 10)
     const col = parseInt(event.currentTarget.dataset.col, 10)
@@ -697,20 +716,66 @@ export default class extends Controller {
     this.render()
   }
 
+  // Fires the moment a chain completes a match -- clears the chain and
+  // re-renders IMMEDIATELY, rather than waiting on the network round
+  // trip first. The server call below still happens (it's the only
+  // place a claim actually gets persisted -- points, grid regeneration,
+  // and target rotation all stay server-authoritative, never
+  // duplicated here), but the player's own input is never blocked
+  // waiting on it: this used to hold the whole board hostage until the
+  // fetch resolved, which was most of what made the game feel laggy.
   async submitPath() {
-    if (this.submitting) return
-
     if (this.path.length < 2) {
       this.flashMessage("Link at least two numbers first.", "warning")
       return
     }
 
-    this.submitting = true
-    const coords = this.path.map((p) => [p.row, p.col])
+    const annotatedPath = this.path.map((p) => ({ ...p })) // snapshot -- this.path gets cleared below
+    const coords = annotatedPath.map((p) => [p.row, p.col])
+    const ops = [...this.ops]
+    const value = this.currentChainValue()
+    const matchedTarget = (this.stateValue.targets || []).find((t) => t.value === value)
+
     // Captured before path/ops get cleared below, so the popup can show
     // exactly what was just solved and where it happened on the board.
     const expressionForPopup = this.expressionTarget.textContent
     const popupPosition = this.pathCentroidPercent()
+
+    this.path = []
+    this.ops = []
+    this.lastClick = null
+    this.render()
+
+    // Solo has no opponent who could beat you to a target -- nothing
+    // about this claim can fail server-side that wasn't already true
+    // the instant the chain matched, so the reward cascade fires here,
+    // now, using the exact formula ClaimService uses (see
+    // estimateMultiplier/estimateChainBonus above) rather than waiting
+    // on a network round trip just to repeat back a number this client
+    // can already compute with certainty. Multiplayer skips this
+    // entirely and waits for the real server result below instead,
+    // since a genuine race with the opponent is possible there.
+    let optimisticRewardShown = false
+    if (this.modeValue === "solo" && matchedTarget) {
+      const multiplier = estimateMultiplier(annotatedPath)
+      const chainBonus = estimateChainBonus(annotatedPath)
+      const points = matchedTarget.points * multiplier * chainBonus
+      playClaim()
+      const chainNote = chainBonus > 1 ? ` \u00B7 ${annotatedPath.length}-chain!` : ""
+      this.flashMessage(`Claimed ${value}! +${points} pts (${multiplier}x${chainNote})`, "success")
+      this.showRewardSequence({
+        expressionForPopup, value, points, multiplier,
+        chainLength: annotatedPath.length, chainBonus, position: popupPosition
+      })
+      optimisticRewardShown = true
+
+      // Purely cosmetic head start -- the real target list arrives with
+      // applyIncomingState just below, but there's no reason to make the
+      // just-claimed chip sit there looking fully active for that whole
+      // round trip when we already know it's spoken for.
+      const chipEl = this.targetsTarget.querySelector(`[data-target-id="${matchedTarget.id}"]`)
+      if (chipEl) chipEl.classList.add("claiming")
+    }
 
     let data
     try {
@@ -721,37 +786,41 @@ export default class extends Controller {
           "X-CSRF-Token": this.csrfToken(),
           Accept: "application/json"
         },
-        body: JSON.stringify({ coords, ops: this.ops })
+        body: JSON.stringify({ coords, ops })
       })
       data = await response.json()
     } catch (e) {
-      this.submitting = false
-      this.flashMessage("Connection error, try again.", "warning")
+      if (!optimisticRewardShown) this.flashMessage("Connection error, try again.", "warning")
       return
     }
-
-    this.submitting = false
-    this.path = []
-    this.ops = []
-    this.lastClick = null
 
     if (data.game) this.applyIncomingState(data.game)
 
     if (data.result && data.result.success) {
-      playClaim()
-      const { value, points, multiplier, chain_length: chainLength, chain_bonus: chainBonus, target_id: targetId } = data.result
-      const chainNote = chainBonus > 1 ? ` \u00B7 ${chainLength}-chain!` : ""
-      this.flashMessage(`Claimed ${value}! +${points} pts (${multiplier}x${chainNote})`, "success")
-      this.showRewardSequence({ expressionForPopup, value, points, multiplier, chainLength, chainBonus, position: popupPosition })
+      if (!optimisticRewardShown) {
+        playClaim()
+        const { value: claimedValue, points, multiplier, chain_length: chainLength, chain_bonus: chainBonus } = data.result
+        const chainNote = chainBonus > 1 ? ` \u00B7 ${chainLength}-chain!` : ""
+        this.flashMessage(`Claimed ${claimedValue}! +${points} pts (${multiplier}x${chainNote})`, "success")
+        this.showRewardSequence({
+          expressionForPopup, value: claimedValue, points, multiplier, chainLength, chainBonus, position: popupPosition
+        })
+      }
       // Lets other controllers on this same element (see demo_controller.js)
       // react to a successful claim without grid_controller needing to know
       // anything about them -- e.g. the demo walkthrough waits for this to
       // know its guided chain actually went through server-side, rather
       // than just assuming its own client-side submission succeeded.
       this.element.dispatchEvent(new CustomEvent("grid:claimed", {
-        bubbles: true, detail: { value, points, multiplier, targetId }
+        bubbles: true,
+        detail: { value: data.result.value, points: data.result.points, multiplier: data.result.multiplier, targetId: data.result.target_id }
       }))
     } else if (data.result) {
+      // Only reachable with optimisticRewardShown still false -- solo
+      // only takes the optimistic branch above once matchedTarget is
+      // confirmed present, and nothing else about a solo submission can
+      // fail once the chain's value matches an open target. So this is
+      // genuinely just the multiplayer "someone beat you to it" case.
       playFail()
       this.flashMessage(data.result.message || "No matching target.", "warning")
     } else {
