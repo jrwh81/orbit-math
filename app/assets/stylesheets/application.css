@@ -155,6 +155,8 @@ a:hover { text-decoration: underline; }
 .demo-board .grid { padding: 8px; }
 .demo-board .cell-value { font-size: 1.35rem; }
 .demo-board .cell-order { width: 15px; height: 15px; font-size: 0.6rem; }
+.demo-board .connector-active { font-size: 1.1rem; }
+.demo-board .connector-diagonal.connector-active { font-size: 0.95rem; }
 .demo-expression { text-align: center; margin-top: 10px; font-weight: 700; color: var(--accent); font-size: 0.95rem; }
 .demo-caption { text-align: center; margin: 4px 0 0; font-size: 0.72rem; color: var(--muted); font-style: italic; }
 
@@ -337,12 +339,11 @@ a:hover { text-decoration: underline; }
 }
 
 /* A connector grid: cells sit on the odd tracks, a thin connector track
-   sits between every pair of orthogonally-adjacent cells, and the four
-   "corner" intersections (where a diagonal would have been) are simply
-   left empty -- there's nothing to click or draw there, which is what
-   makes diagonal linking impossible now. grid-template-columns/rows are
-   set inline per-render in grid_controller.js#gridTemplateTracks since
-   they depend on the puzzle's grid size. */
+   sits between every pair of orthogonally-adjacent cells, and each
+   interior corner (where four cells meet) carries a criss-cross
+   diagonal indicator instead. grid-template-columns/rows are set
+   inline per-render in grid_controller.js#gridTemplateTracks since they
+   depend on the puzzle's grid size. */
 .grid-rows { position: relative; z-index: 1; display: grid; aspect-ratio: 1 / 1; }
 
 .solve-popup-layer { position: absolute; inset: 0; z-index: 20; pointer-events: none; overflow: visible; }
@@ -446,16 +447,16 @@ a:hover { text-decoration: underline; }
 }
 
 /* --------------------------------------------------------- connectors
-   Sits in the gutter track between two orthogonally-adjacent cells
-   (see grid_controller.js#renderGrid / gridTemplateTracks). By default
-   it's a dim dash, styled like the digits so it reads as part of the
-   same typographic family. When the two cells it sits between are
-   consecutive links in the current chain, it becomes a glowing "+" or
-   "x" instead -- there's no line-drawing overlay anymore, the
-   connector glyph itself is the whole indicator. Corner intersections
-   (where a diagonal would have been) get no element at all, which is
-   what makes diagonal linking impossible: there's nothing there to
-   represent that connection. */
+   Sits in the gutter track between two adjacent cells (see
+   grid_controller.js#renderGrid / gridTemplateTracks) -- an ortho pair
+   gets one dash in the edge between them; a diagonal pair gets its mark
+   at the corner of their shared 2x2 box, alongside the other diagonal's
+   mark (see .connector-diagonal below). By default a connector is a dim
+   dash/slash, styled like the digits so it reads as part of the same
+   typographic family. When the two cells it represents are consecutive
+   links in the current chain, it becomes a glowing "+" or "x" instead
+   -- there's no line-drawing overlay anymore, the connector glyph
+   itself is the whole indicator. */
 .connector {
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; line-height: 1; pointer-events: none;
@@ -464,6 +465,44 @@ a:hover { text-decoration: underline; }
   font-size: clamp(0.7rem, 2vw, 0.95rem);
 }
 .connector-vertical { transform: rotate(90deg); }
+
+/* The criss-cross: two of these stack at the exact same corner (see
+   renderGrid), one per diagonal of the 2x2 box. Drawn as a rotated CSS
+   line via ::before rather than a "\"/"/" text glyph -- overlaid at
+   this tiny size, actual glyphs from the body font don't reliably read
+   as a clean X, but two crossed lines always do. Idle text content is
+   empty; only the line shows. Box size is fixed in rem (not em) and
+   explicitly self-centered, so it doesn't grow or drift off-center
+   when the active state below swaps in a much bigger font-size for the
+   "+"/"x" text -- the box staying put is what keeps that text sitting
+   exactly on the corner point shared by all four cells. */
+.connector-diagonal {
+  position: relative;
+  width: 1.3rem; height: 1.3rem;
+  justify-self: center; align-self: center;
+  font-size: clamp(0.7rem, 2vw, 0.95rem);
+}
+.connector-diagonal::before {
+  content: "";
+  position: absolute; left: 50%; top: 50%;
+  width: 2px; height: 90%;
+  background: currentColor;
+  opacity: 0.55;
+}
+.connector-diagonal-tlbr::before { transform: translate(-50%, -50%) rotate(45deg); }
+.connector-diagonal-trbl::before { transform: translate(-50%, -50%) rotate(-45deg); }
+/* Once a diagonal is actually linked, its own "+"/"x" text takes over
+   and the idle line for THAT diagonal hides -- the other diagonal's
+   line (a separate element at the same corner) stays put, so only the
+   arm that was used changes. Deliberately its own modest, fixed size
+   -- not the enlarged scale the ortho connectors get -- since this
+   symbol sits between four numbers instead of two and doesn't need to
+   read as big to still be clear. */
+.connector-diagonal.connector-active {
+  font-size: clamp(1.5rem, 6vw, 2.2rem);
+  animation: diagonal-connector-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.connector-diagonal.connector-active::before { content: none; }
 
 .connector-active {
   opacity: 1;
@@ -477,6 +516,11 @@ a:hover { text-decoration: underline; }
 @keyframes connector-pop {
   0%   { opacity: 0; transform: scale(0.45); }
   100% { opacity: 1; transform: scale(1.3); }
+}
+
+@keyframes diagonal-connector-pop {
+  0%   { opacity: 0; transform: scale(0.5); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 .grid-help { color: var(--muted); font-size: 0.85rem; text-align: center; margin-top: 12px; }

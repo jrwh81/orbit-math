@@ -4,11 +4,12 @@ import { spawnPixiShatter } from "pixi_shatter"
 
 // Click a neighboring cell to link it with "+". Double-click a neighboring
 // cell (second click within DOUBLE_CLICK_MS) to link it with "*" instead.
-// Clicking the last cell in the chain again removes it. Only orthogonal
-// neighbors count -- see renderGrid/chooseCell -- since there's no
-// connector gutter at the diagonals to represent that link. All
-// evaluation shown here is a preview only -- the server re-validates and
-// re-evaluates every submission from scratch.
+// Clicking the last cell in the chain again removes it. Orthogonal AND
+// diagonal neighbors both count -- see renderGrid/chooseCell -- a
+// diagonal link shows up as one arm of the criss-cross mark at the
+// shared corner of that 2x2 box lighting up. All evaluation shown here
+// is a preview only -- the server re-validates and re-evaluates every
+// submission from scratch.
 const DOUBLE_CLICK_MS = 320
 
 // How long the end-of-round stats screen stays up before automatically
@@ -301,12 +302,13 @@ export default class extends Controller {
     this.renderPointsTotal()
   }
 
-  // No more asteroid field -- this now builds a connector grid: cells
-  // on the odd grid lines, a thin dash/plus/times gutter between every
-  // orthogonally-adjacent pair, and nothing at all in the four corner
-  // intersections where a diagonal would have been. That's what makes
-  // diagonal linking impossible: there's no connector there to
-  // represent it, so chooseCell's adjacency check (below) rejects it.
+  // Cells sit on the odd grid lines, a thin dash/plus/times gutter sits
+  // between every orthogonally-adjacent pair, and each interior corner
+  // (where four cells meet) gets a criss-cross diagonal indicator --
+  // two overlapping "\" and "/" marks that approximate an X at rest.
+  // Linking a cell to its diagonal neighbor lights up just that one
+  // arm into a "+"/"x", while the other diagonal's mark stays dim, so
+  // it reads as "one arm of the X turned into the operator you used."
   renderGrid() {
     const grid = this.stateValue.grid
     const size = grid.length
@@ -341,6 +343,21 @@ export default class extends Controller {
         if (r < size - 1) {
           cellsHtml += this.renderConnector(r, c, r + 1, c, gridRow + 1, gridCol, "connector-vertical", connectorMap)
         }
+        // The criss-cross: only exists where a full 2x2 box of cells
+        // does (this one plus its right/below/diagonal neighbors), and
+        // sits on the corner intersection those four cells share. Two
+        // independent marks, one per diagonal, stacked at that same
+        // grid position.
+        if (r < size - 1 && c < size - 1) {
+          const cornerRow = gridRow + 1
+          const cornerCol = gridCol + 1
+          // Idle diagonal marks are drawn as CSS lines (see
+          // .connector-diagonal::before), not text glyphs -- a bare "\"
+          // and "/" character overlaid at this tiny size don't reliably
+          // read as an X across fonts, so idleGlyph is left empty here.
+          cellsHtml += this.renderConnector(r, c, r + 1, c + 1, cornerRow, cornerCol, "connector-diagonal connector-diagonal-tlbr", connectorMap, "")
+          cellsHtml += this.renderConnector(r, c + 1, r + 1, c, cornerRow, cornerCol, "connector-diagonal connector-diagonal-trbl", connectorMap, "")
+        }
       })
     })
 
@@ -348,13 +365,14 @@ export default class extends Controller {
     this.justRefreshedCells = [] // one-shot: don't replay the flip on the next unrelated render
   }
 
-  // A single connector glyph in the gutter between (r1,c1) and (r2,c2).
-  // Dash by default; +/x (with a little pop-in) when that exact pair is
-  // a consecutive link in the current chain.
-  renderConnector(r1, c1, r2, c2, gridRow, gridCol, orientation, connectorMap) {
+  // A single connector glyph in the gutter (or, for a diagonal, the box
+  // corner) between (r1,c1) and (r2,c2). idleGlyph by default; +/x
+  // (with a little pop-in) when that exact pair is a consecutive link
+  // in the current chain.
+  renderConnector(r1, c1, r2, c2, gridRow, gridCol, orientation, connectorMap, idleGlyph = "\u2013") {
     const op = connectorMap.get(connectorKey({ row: r1, col: c1 }, { row: r2, col: c2 }))
-    const classes = ["connector", orientation]
-    let glyph = "\u2013" // dash
+    const classes = ["connector", ...orientation.split(" ")]
+    let glyph = idleGlyph
 
     if (op === "+") {
       classes.push("connector-active", "connector-plus")
@@ -502,13 +520,12 @@ export default class extends Controller {
       playAdd(0)
     } else {
       const prev = this.path[lastIndex]
-      // Orthogonal only now -- there's no connector gutter at the
-      // corner intersections (see renderGrid), so a diagonal neighbor
-      // has no dash/plus/times to represent that link and can't be
-      // chained to directly.
-      const adjacent =
-        (prev.row === row && Math.abs(prev.col - col) === 1) ||
-        (prev.col === col && Math.abs(prev.row - row) === 1)
+      // Orthogonal neighbors link through the gutter dash; diagonal
+      // neighbors link through the criss-cross mark at the shared
+      // corner of their 2x2 box (see renderGrid) -- any diagonal pair
+      // within the grid always has one, since all four cells of that
+      // box necessarily exist too.
+      const adjacent = Math.abs(prev.row - row) <= 1 && Math.abs(prev.col - col) <= 1
       if (!adjacent) {
         // Pivot to a fresh chain starting here, rather than rejecting
         // the click -- forcing the player to manually clear an old

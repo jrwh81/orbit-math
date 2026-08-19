@@ -36,6 +36,8 @@
             </button>
 
             <span class="connector connector-vertical" style="grid-row:2;grid-column:1;">&ndash;</span>
+            <span class="connector connector-diagonal connector-diagonal-tlbr" style="grid-row:2;grid-column:2;"></span>
+            <span class="connector connector-diagonal connector-diagonal-trbl" style="grid-row:2;grid-column:2;"></span>
             <span class="connector connector-vertical connector-active connector-times" style="grid-row:2;grid-column:3;">&times;</span>
 
             <button type="button" class="cell" style="grid-row:3;grid-column:1;">
@@ -56,7 +58,7 @@
       <li><strong>Click</strong> a number to start a chain &mdash; it lights up with its own color once it's picked, like 3 and 5 above.</li>
       <li><strong>Click</strong> a neighboring number to <strong>add</strong> it &mdash; like 3 &rarr; 5 above, shown by the glowing <strong>+</strong> between them.</li>
       <li><strong>Double-click</strong> a neighboring number to <strong>multiply</strong> instead &mdash; like 5 &rarr; 4 above, shown by the <strong>&times;</strong>.</li>
-      <li>Only straight up/down/left/right neighbors can link &mdash; diagonals don't have a connector between them.</li>
+      <li>Diagonal neighbors count too &mdash; every group of four numbers has a faint <strong>x</strong> mark where they meet. Link across it and that arm lights up into a <strong>+</strong> or <strong>&times;</strong>, just like 3 and 7 could here.</li>
       <li>Match a cargo target below the grid and it's claimed <strong>automatically</strong> &mdash; no submit button needed.</li>
       <li>Claimed numbers get replaced with fresh ones. Chain as many as you can before time runs out!</li>
     </ol>
