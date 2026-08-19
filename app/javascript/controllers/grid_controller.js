@@ -2,15 +2,17 @@ import { Controller } from "@hotwired/stimulus"
 import { playAdd, playMultiply, playRemove, playClaim, playFail, playVictory, playReward } from "sfx"
 import { spawnPixiShatter } from "pixi_shatter"
 
-// Click a neighboring cell to link it with "+". Double-click a neighboring
-// cell (second click within DOUBLE_CLICK_MS) to link it with "*" instead.
-// Clicking the last cell in the chain again removes it. Orthogonal AND
-// diagonal neighbors both count -- see renderGrid/chooseCell -- a
-// diagonal link shows up as one arm of the criss-cross mark at the
-// shared corner of that 2x2 box lighting up. All evaluation shown here
-// is a preview only -- the server re-validates and re-evaluates every
-// submission from scratch.
-const DOUBLE_CLICK_MS = 320
+// Click a neighboring cell to link it with "+", immediately -- no wait.
+// Double-click (second click on the SAME cell within DOUBLE_CLICK_MS)
+// retroactively upgrades that link to "*" instead of ever making a
+// single click wait to find out whether a second one is coming --
+// see cellClicked/upgradeToMultiply. Clicking the last cell in the
+// chain again undoes it. Orthogonal AND diagonal neighbors both count
+// -- see renderGrid/chooseCell -- a diagonal link shows up as one arm
+// of the criss-cross mark at the shared corner of that 2x2 box
+// lighting up. All evaluation shown here is a preview only -- the
+// server re-validates and re-evaluates every submission from scratch.
+const DOUBLE_CLICK_MS = 260
 
 // How long the end-of-round stats screen stays up before automatically
 // sending the player home. "Play again" / "Continue" both skip the wait.
@@ -98,8 +100,7 @@ export default class extends Controller {
   connect() {
     this.path = []
     this.ops = []
-    this.pendingTimer = null
-    this.pendingCell = null
+    this.lastClick = null
     this.submitting = false
     this.finishing = false
     this.tickInterval = null
@@ -126,7 +127,6 @@ export default class extends Controller {
 
   disconnect() {
     this.element.removeEventListener("grid:remote-update", this.remoteUpdateHandler)
-    if (this.pendingTimer) clearTimeout(this.pendingTimer)
     this.stopTicking()
   }
 
@@ -575,28 +575,49 @@ export default class extends Controller {
 
   // ----------------------------------------------------------- interaction
 
+  // No delay on the common case: the first click on a cell commits
+  // immediately as "+" (see chooseCell). Only a genuine second click on
+  // that exact SAME cell, landing within DOUBLE_CLICK_MS, costs
+  // anything extra -- and even then it's just a quick retroactive
+  // upgrade to "*" (see upgradeToMultiply), not a wait-and-see delay
+  // paid by every single click.
   cellClicked(event) {
     if (this.stateValue.status === "completed") return
     if (this.submitting) return // ignore clicks while an auto-submit is still resolving
 
     const row = parseInt(event.currentTarget.dataset.row, 10)
     const col = parseInt(event.currentTarget.dataset.col, 10)
+    const now = performance.now()
 
-    if (this.pendingCell && this.pendingCell.row === row && this.pendingCell.col === col) {
-      clearTimeout(this.pendingTimer)
-      this.pendingTimer = null
-      this.pendingCell = null
-      this.chooseCell(row, col, "*")
+    if (this.lastClick && this.lastClick.row === row && this.lastClick.col === col &&
+        now - this.lastClick.at < DOUBLE_CLICK_MS) {
+      this.lastClick = null
+      this.upgradeToMultiply(row, col)
       return
     }
 
-    if (this.pendingTimer) clearTimeout(this.pendingTimer)
-    this.pendingCell = { row, col }
-    this.pendingTimer = setTimeout(() => {
-      this.chooseCell(row, col, "+")
-      this.pendingTimer = null
-      this.pendingCell = null
-    }, DOUBLE_CLICK_MS)
+    this.lastClick = { row, col, at: now }
+    this.chooseCell(row, col, "+")
+  }
+
+  // Swaps the link that was just added from "+" to "*" -- only valid if
+  // that link is genuinely still the last thing in the chain, which it
+  // always will be immediately after a same-cell double-click, since
+  // chooseCell already committed the "+" version on the first click of
+  // the pair. Guards against the rare case where the chain moved on
+  // (e.g. that click actually just undid the cell) between the two
+  // clicks, in which case there's nothing left to upgrade.
+  upgradeToMultiply(row, col) {
+    const lastIndex = this.path.length - 1
+    if (lastIndex < 1) return // no link to upgrade yet -- e.g. this was the chain's very first cell
+
+    const last = this.path[lastIndex]
+    if (last.row !== row || last.col !== col) return
+
+    this.ops[lastIndex - 1] = "*"
+    playMultiply(this.path.length)
+    this.render()
+    this.maybeAutoSubmit()
   }
 
   chooseCell(row, col, op) {
@@ -672,6 +693,7 @@ export default class extends Controller {
   clearPath() {
     this.path = []
     this.ops = []
+    this.lastClick = null
     this.render()
   }
 
@@ -711,6 +733,7 @@ export default class extends Controller {
     this.submitting = false
     this.path = []
     this.ops = []
+    this.lastClick = null
 
     if (data.game) this.applyIncomingState(data.game)
 

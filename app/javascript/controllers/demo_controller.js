@@ -73,6 +73,15 @@ export default class extends Controller {
   // this controller never assumes success on its own. Any click that
   // doesn't match the expected next cell quietly ends the demo rather
   // than fighting the player's own game.
+  //
+  // A multiply step needs TWO real clicks on the same cell -- and since
+  // grid_controller commits every click immediately now (no more
+  // wait-and-see delay before deciding +/x), it re-renders the grid's
+  // DOM on EACH of those two clicks, not just the second. So both
+  // branches below defer past that render before touching anything:
+  // the first click re-highlights the SAME cell (stepIndex hasn't
+  // advanced yet) to keep the ring alive while awaiting the second
+  // click; the second click moves on to whichever cell is next.
   onGridClick(event) {
     if (!this.active) return
 
@@ -88,23 +97,15 @@ export default class extends Controller {
       return
     }
 
-    // A multiply step is TWO real clicks on the same cell (that's how
-    // grid_controller's own double-click detection works) -- the first
-    // one just arms it, the second actually advances.
     const needsDouble = this.stepIndex > 0 && this.ops[this.stepIndex - 1] === "*"
     if (needsDouble && !this.awaitingSecondClick) {
       this.awaitingSecondClick = true
+      setTimeout(() => this.showStep(), 0)
       return
     }
     this.awaitingSecondClick = false
     this.stepIndex += 1
 
-    // grid_controller's own click handler (bubble phase, fires right
-    // after this one) is about to synchronously rebuild the grid's
-    // entire DOM via render() -- highlighting anything right now would
-    // just get thrown away with the old nodes. Deferring to the next
-    // tick lets that rebuild finish first, so showStep() below queries
-    // the FRESH cell nodes instead of ones about to be detached.
     setTimeout(() => {
       if (this.stepIndex < this.coords.length) {
         this.showStep()
