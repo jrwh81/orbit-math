@@ -620,10 +620,20 @@ export default class extends Controller {
 
     if (data.result && data.result.success) {
       playClaim()
-      const { value, points, multiplier } = data.result
-      this.flashMessage(`Claimed ${value}! +${points} pts (${multiplier}x)`, "success")
+      const { value, points, multiplier, chain_length: chainLength, chain_bonus: chainBonus, target_id: targetId } = data.result
+      const chainNote = chainBonus > 1 ? ` \u00B7 ${chainLength}-chain!` : ""
+      this.flashMessage(`Claimed ${value}! +${points} pts (${multiplier}x${chainNote})`, "success")
       this.showSolvePopup(`${expressionForPopup} = ${value}`, popupPosition)
       this.showPointsPopup(points, multiplier, popupPosition)
+      if (chainBonus > 1) this.showChainPopup(chainLength, popupPosition)
+      // Lets other controllers on this same element (see demo_controller.js)
+      // react to a successful claim without grid_controller needing to know
+      // anything about them -- e.g. the demo walkthrough waits for this to
+      // know its guided chain actually went through server-side, rather
+      // than just assuming its own client-side submission succeeded.
+      this.element.dispatchEvent(new CustomEvent("grid:claimed", {
+        bubbles: true, detail: { value, points, multiplier, targetId }
+      }))
     } else if (data.result) {
       playFail()
       this.flashMessage(data.result.message || "No matching target.", "warning")
@@ -701,6 +711,32 @@ export default class extends Controller {
     if (multiplier <= 3) return "points-popup-low"
     if (multiplier <= 5) return "points-popup-mid"
     return "points-popup-high"
+  }
+
+  // A third popup, only for chains long enough to earn the length bonus
+  // (4+ cells -- see ClaimService::MIN_CHAIN_LENGTH_FOR_BONUS). Launches
+  // last and rises furthest of the three, and reads as "NxN CHAIN!!"
+  // (e.g. a 4-cell chain shows "4x 4CHAIN!!") since the bonus always
+  // equals the chain's own length by design -- the bigger the chain,
+  // the bigger both numbers get, together.
+  showChainPopup(chainLength, position) {
+    if (!this.hasPopupLayerTarget || !chainLength) return
+
+    const el = document.createElement("div")
+    el.className = "chain-popup"
+    // Nudged sideways from the shared launch point -- all three popups
+    // start in the same spot and float straight up, so without this
+    // offset the chain popup would sit directly on top of the points
+    // popup for most of their overlapping lifespan instead of reading
+    // as two separate callouts.
+    const offsetX = Math.min(92, Math.max(8, position.x + 10))
+    el.style.left = `${offsetX}%`
+    el.style.top = `${position.y}%`
+    el.textContent = `${chainLength}x ${chainLength}CHAIN!!`
+
+    this.popupLayerTarget.appendChild(el)
+    el.addEventListener("animationend", () => el.remove())
+    setTimeout(() => el.remove(), 2600) // safety net in case animationend never fires
   }
 
   // Captures each claimed cell's ACTUAL on-screen position and size

@@ -69,7 +69,19 @@ class ClaimServiceTest < ActiveSupport::TestCase
     assert_equal 8, ClaimService.multiplier_for_chain([{ "value" => 9 }])
   end
 
-  test "a successful claim stores the prize's base points times its chain's digit multiplier, not a flat rate" do
+  test "chain_length_bonus is a no-op under 4 cells, then climbs 1:1 with length from 4 up" do
+    two_cells = [{ "value" => 1 }, { "value" => 2 }]
+    three_cells = [{ "value" => 1 }, { "value" => 2 }, { "value" => 3 }]
+    four_cells = [{ "value" => 1 }, { "value" => 2 }, { "value" => 3 }, { "value" => 4 }]
+    six_cells = Array.new(6) { { "value" => 1 } }
+
+    assert_equal 1, ClaimService.chain_length_bonus(two_cells)
+    assert_equal 1, ClaimService.chain_length_bonus(three_cells)
+    assert_equal 4, ClaimService.chain_length_bonus(four_cells)
+    assert_equal 6, ClaimService.chain_length_bonus(six_cells)
+  end
+
+  test "a successful claim stores the prize's base points times its digit multiplier times its chain-length bonus" do
     user = User.create!(username: "cs_points", password: "password123")
     puzzle = PuzzleGenerator.call(difficulty: "beginner", seed: 45)
     game_session = GameSession.create!(mode: :solo, status: :active, puzzle: puzzle, host: user)
@@ -79,11 +91,14 @@ class ClaimServiceTest < ActiveSupport::TestCase
     path = PuzzleSolver.find_path_for(game_session.active_grid, target["value"])
     digits_used = path[:coords].map { |(r, c)| { "value" => game_session.active_grid[r][c] } }
     expected_multiplier = ClaimService.multiplier_for_chain(digits_used)
-    expected_points = ClaimService.points_for_value(target["value"]) * expected_multiplier
+    expected_chain_bonus = ClaimService.chain_length_bonus(digits_used)
+    expected_points = ClaimService.points_for_value(target["value"]) * expected_multiplier * expected_chain_bonus
 
     result = ClaimService.call(game_session: game_session, user: user, coords: path[:coords], ops: path[:ops])
     assert result.success?
     assert_equal expected_multiplier, result.multiplier
+    assert_equal digits_used.size, result.chain_length
+    assert_equal expected_chain_bonus, result.chain_bonus
     assert_equal expected_points, result.points
 
     game_session.reload
@@ -92,7 +107,7 @@ class ClaimServiceTest < ActiveSupport::TestCase
     assert_equal stored_points, game_session.points_for(user)
   end
 
-  test "claimed points always equal the prize's base tier times the chain's digit multiplier" do
+  test "claimed points always equal the prize's base tier times the digit multiplier times the chain-length bonus" do
     user = User.create!(username: "cs_varied_points", password: "password123")
     puzzle = PuzzleGenerator.call(difficulty: "expert", seed: 46) # widest value range in the game
     game_session = GameSession.create!(mode: :solo, status: :active, puzzle: puzzle, host: user)
@@ -106,7 +121,8 @@ class ClaimServiceTest < ActiveSupport::TestCase
       path = PuzzleSolver.find_path_for(game_session.active_grid, target["value"])
       digits_used = path[:coords].map { |(r, c)| { "value" => game_session.active_grid[r][c] } }
       expected_multiplier = ClaimService.multiplier_for_chain(digits_used)
-      expected_points = ClaimService.points_for_value(target["value"]) * expected_multiplier
+      expected_chain_bonus = ClaimService.chain_length_bonus(digits_used)
+      expected_points = ClaimService.points_for_value(target["value"]) * expected_multiplier * expected_chain_bonus
 
       result = ClaimService.call(game_session: game_session, user: user, coords: path[:coords], ops: path[:ops])
       next unless result.success?
@@ -114,7 +130,8 @@ class ClaimServiceTest < ActiveSupport::TestCase
       game_session.reload
       stored_points = game_session.claims[target["id"]]["points"]
       assert_equal expected_points, stored_points,
-                   "claimed target worth #{target["value"]} with digit multiplier #{expected_multiplier}x should earn exactly #{expected_points} points"
+                   "claimed target worth #{target["value"]} with #{expected_multiplier}x digit multiplier and " \
+                   "#{expected_chain_bonus}x chain bonus should earn exactly #{expected_points} points"
     end
   end
 

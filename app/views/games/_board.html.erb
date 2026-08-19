@@ -1,5 +1,5 @@
 <div class="game-board-wrap"
-     data-controller="grid<%= " multiplayer" if mode == "multiplayer" %>"
+     data-controller="grid<%= " multiplayer" if mode == "multiplayer" %><%= " demo" if mode == "solo" %>"
      data-grid-submit-url-value="<%= submit_url %>"
      data-grid-finish-url-value="<%= mode == "solo" ? finish_solo_game_path(game_session) : finish_multiplayer_game_path(game_session) %>"
      data-grid-new-game-url-value="<%= mode == "solo" ? new_solo_game_path : multiplayer_games_path %>"
@@ -9,6 +9,12 @@
      <% if mode == "multiplayer" %>
        data-multiplayer-game-session-id-value="<%= game_session.id %>"
        data-multiplayer-current-user-id-value="<%= current_user.id %>"
+     <% end %>
+     <% if mode == "solo" %>
+       data-demo-enabled-value="<%= current_user.demo_mode_enabled? %>"
+       data-demo-path-url-value="<%= demo_path_solo_game_path(game_session) %>"
+       data-demo-mode-url-value="<%= demo_mode_path %>"
+       data-demo-initial-path-value="<%= (local_assigns[:demo_path] || { available: false }).to_json %>"
      <% end %>>
 
   <div class="scoreboard" data-grid-target="scoreboard">
@@ -18,6 +24,13 @@
   <div class="timer-indicator" data-grid-target="timer">
     <!-- countdown clock rendered by grid_controller.js -->
   </div>
+
+  <% if mode == "solo" %>
+    <label class="demo-toggle">
+      <input type="checkbox" data-demo-target="checkbox" data-action="change->demo#toggle" <%= "checked" if current_user.demo_mode_enabled? %>>
+      Show me a demo (guides you through one solution)
+    </label>
+  <% end %>
 
   <div class="targets-row-wrap">
     <p class="targets-label">Prizes on offer</p>
@@ -50,7 +63,12 @@
     score <strong>3&times;</strong> points, 4&ndash;6 scores
     <strong>5&times;</strong>, and 7&ndash;9 scores <strong>8&times;</strong>
     &mdash; so the same prize can be worth very different amounts
-    depending on how ambitious your chain is.
+    depending on how ambitious your chain is. Chain together <strong>4 or
+    more</strong> numbers and you also earn a length bonus equal to the
+    chain itself &mdash; a 4-number chain is worth an extra
+    <strong>4&times;</strong>, a 5-number chain <strong>5&times;</strong>,
+    and it keeps climbing the longer you go, stacking right on top of the
+    digit multiplier.
   </p>
 
   <div class="game-message" data-grid-target="message"></div>

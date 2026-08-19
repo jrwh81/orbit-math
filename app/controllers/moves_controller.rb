@@ -72,6 +72,8 @@ class MovesController < ApplicationController
       target_id: result.target && result.target["id"],
       points: result.points,
       multiplier: result.multiplier,
+      chain_length: result.chain_length,
+      chain_bonus: result.chain_bonus,
       user_id: current_user.id
     }
   end

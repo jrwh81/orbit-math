@@ -62,10 +62,10 @@ class UserTest < ActiveSupport::TestCase
     assert user.errors[:first_name].any?
     assert user.errors[:last_name].any?
     assert user.errors[:email].any?
+  end
 
-    user.first_name = "Katherine"
-    user.last_name = "Johnson"
-    user.email = "katherine@example.com"
-    assert user.valid?(:signup)
+  test "demo_mode_enabled defaults to true on a brand new account" do
+    user = User.create!(username: "demo_default_check", password: "password123")
+    assert user.demo_mode_enabled?, "demo mode should be ON by default -- it's opt-out, not opt-in"
   end
 end

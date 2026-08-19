@@ -22,7 +22,10 @@ Rails.application.routes.draw do
 
   # Single player
   resources :solo_games, only: [:new, :create, :show] do
-    member { post :finish }
+    member do
+      post :finish
+      get :demo_path
+    end
     resources :moves, only: [:create], controller: "moves", defaults: { mode: "solo" }
   end
 
@@ -37,6 +40,10 @@ Rails.application.routes.draw do
   post "multiplayer/join", to: "multiplayer_games#join", as: :join_multiplayer_game
 
   get "leaderboard", to: "leaderboard#index"
+
+  # Demo-mode is a per-USER preference (persists across every future solo
+  # run, not just this one) -- see UsersController.
+  patch "demo_mode", to: "users#update_demo_mode"
 
   namespace :admin do
     root to: "dashboard#index"

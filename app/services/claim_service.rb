@@ -20,7 +20,11 @@
 # win the race, and the loser gets a clear "already claimed" result
 # instead of a corrupted double-claim.
 class ClaimService
-  Result = Struct.new(:success, :value, :target, :replacement, :message, :move, :points, :multiplier, keyword_init: true) do
+  Result = Struct.new(
+    :success, :value, :target, :replacement, :message, :move,
+    :points, :multiplier, :chain_length, :chain_bonus,
+    keyword_init: true
+  ) do
     alias_method :success?, :success
   end
 
@@ -64,11 +68,26 @@ class ClaimService
     (tier || MULTIPLIER_TIERS.last)[:multiplier]
   end
 
-  # A claim's total points: the prize's own base value times the
-  # multiplier its solving chain earned. This is the number that
-  # actually lands on the scoreboard and flashes on screen.
+  # A second, stacking multiplier that rewards long chains, not just
+  # big digits -- 2 or 3 cells earns no bonus (1x, i.e. a no-op), but
+  # the moment a chain reaches 4 cells it earns a bonus equal to its own
+  # length, and that keeps climbing with every extra cell: 4 cells is
+  # 4x, 5 is 5x, 6 is 6x, and so on, uncapped. Combined with the digit
+  # multiplier above, a long chain through big digits compounds fast on
+  # purpose -- that's the whole reward for finding it.
+  MIN_CHAIN_LENGTH_FOR_BONUS = 4
+
+  def self.chain_length_bonus(annotated_path)
+    length = annotated_path.length
+    length >= MIN_CHAIN_LENGTH_FOR_BONUS ? length : 1
+  end
+
+  # A claim's total points: the prize's own base value times the digit
+  # multiplier its solving chain earned, times the chain-length bonus
+  # (a no-op 1x for anything shorter than 4 cells). This is the number
+  # that actually lands on the scoreboard and flashes on screen.
   def self.points_for_claim(target_value, annotated_path)
-    points_for_value(target_value) * multiplier_for_chain(annotated_path)
+    points_for_value(target_value) * multiplier_for_chain(annotated_path) * chain_length_bonus(annotated_path)
   end
 
   def self.call(game_session:, user:, coords:, ops:)
@@ -91,14 +110,15 @@ class ClaimService
     eval_result = ChainEvaluator.call(grid: @game_session.active_grid, coords: @coords, ops: @ops)
     return Result.new(success: false, message: eval_result.error) unless eval_result.valid?
 
-    claimed_target, replacement, points, multiplier = attempt_claim_and_rotate(eval_result.value, eval_result.annotated_path)
+    claimed_target, replacement, points, multiplier, chain_length, chain_bonus =
+      attempt_claim_and_rotate(eval_result.value, eval_result.annotated_path)
     move = record_move(eval_result, claimed_target)
 
     if claimed_target
       Result.new(
         success: true, value: eval_result.value, target: claimed_target,
         replacement: replacement, message: "claimed", move: move,
-        points: points, multiplier: multiplier
+        points: points, multiplier: multiplier, chain_length: chain_length, chain_bonus: chain_bonus
       )
     else
       Result.new(success: false, value: eval_result.value, message: "No open target matches #{eval_result.value}", move: move)
@@ -114,6 +134,8 @@ class ClaimService
     replacement = nil
     points = nil
     multiplier = nil
+    chain_length = nil
+    chain_bonus = nil
 
     @game_session.with_lock do
       target = @game_session.active_targets.find { |t| t["value"] == value }
@@ -134,7 +156,9 @@ class ClaimService
       )
 
       multiplier = self.class.multiplier_for_chain(annotated_path)
-      points = self.class.points_for_value(value) * multiplier
+      chain_length = annotated_path.length
+      chain_bonus = self.class.chain_length_bonus(annotated_path)
+      points = self.class.points_for_value(value) * multiplier * chain_bonus
 
       @game_session.active_grid = grid
       @game_session.active_targets = replacement ? remaining_targets + [replacement] : remaining_targets
@@ -144,6 +168,8 @@ class ClaimService
           "value" => value,
           "points" => points,
           "multiplier" => multiplier,
+          "chain_length" => chain_length,
+          "chain_bonus" => chain_bonus,
           "claimed_at" => Time.current.iso8601
         }
       )
@@ -151,7 +177,7 @@ class ClaimService
       claimed_target = target
     end
 
-    [claimed_target, replacement, points, multiplier]
+    [claimed_target, replacement, points, multiplier, chain_length, chain_bonus]
   end
 
   # Gives every cell in the winning chain a new value, different from

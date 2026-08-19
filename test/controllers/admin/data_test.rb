@@ -66,12 +66,14 @@ class AdminDataTest < ActionDispatch::IntegrationTest
 
     get admin_game_session_path(game_session)
     assert_response :success
-    # Points depend on the SPECIFIC target's value AND the chain's digit
-    # multiplier, not a flat rate per difficulty -- compute the expected
-    # value the same way the app does (ClaimService is the single source
-    # of truth) rather than hardcoding a number tied to what seed 4
-    # happens to produce.
-    expected_points = ClaimService.points_for_value(target["value"]) * ClaimService.multiplier_for_chain(digits_used)
+    # Points depend on the SPECIFIC target's value, the chain's digit
+    # multiplier, AND its chain-length bonus, not a flat rate per
+    # difficulty -- compute the expected value the same way the app
+    # does (ClaimService is the single source of truth) rather than
+    # hardcoding a number tied to what seed 4 happens to produce.
+    expected_points = ClaimService.points_for_value(target["value"]) *
+                       ClaimService.multiplier_for_chain(digits_used) *
+                       ClaimService.chain_length_bonus(digits_used)
     assert_select "td", text: expected_points.to_s
   end
 

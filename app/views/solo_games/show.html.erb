@@ -7,7 +7,8 @@
         game_session: @game_session,
         game_state: GameStatePresenter.new(@game_session).as_json,
         mode: "solo",
-        submit_url: solo_game_moves_path(@game_session) %>
+        submit_url: solo_game_moves_path(@game_session),
+        demo_path: @demo_path %>
 
   <% if @game_session.completed? %>
     <div class="completion-banner">
