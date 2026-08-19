@@ -20,6 +20,22 @@
        data-grid-claim-name-url-value="<%= claim_name_path %>"
      <% end %>>
 
+  <div class="targets-row-wrap">
+    <p class="targets-label">Prizes on offer</p>
+    <div class="targets-row" data-grid-target="targets">
+      <!-- prize chips rendered by grid_controller.js -->
+    </div>
+  </div>
+
+  <div class="grid-stage">
+    <div class="grid" data-grid-target="grid">
+      <!-- cells rendered by grid_controller.js -->
+    </div>
+    <div class="solve-popup-layer" data-grid-target="popupLayer">
+      <!-- floating "3 + 5 = 8" and "+300 pts" popups appended here on each claim -->
+    </div>
+  </div>
+
   <div class="scoreboard" data-grid-target="scoreboard">
     <!-- rendered by grid_controller.js from state -->
   </div>
@@ -35,25 +51,9 @@
     </label>
   <% end %>
 
-  <div class="targets-row-wrap">
-    <p class="targets-label">Prizes on offer</p>
-    <div class="targets-row" data-grid-target="targets">
-      <!-- prize chips rendered by grid_controller.js -->
-    </div>
-  </div>
-
   <div class="expression-bar">
     <span class="expression" data-grid-target="expression">&mdash;</span>
     <span class="points-total" data-grid-target="pointsTotal">0 pts</span>
-  </div>
-
-  <div class="grid-stage">
-    <div class="grid" data-grid-target="grid">
-      <!-- cells rendered by grid_controller.js -->
-    </div>
-    <div class="solve-popup-layer" data-grid-target="popupLayer">
-      <!-- floating "3 + 5 = 8" and "+300 pts" popups appended here on each claim -->
-    </div>
   </div>
 
   <p class="grid-help">
