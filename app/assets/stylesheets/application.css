@@ -354,7 +354,7 @@ a:hover { text-decoration: underline; }
   font-size: clamp(1rem, 4vw, 1.5rem); font-weight: 800; white-space: nowrap;
   color: var(--success); opacity: 0.9;
   text-shadow: 0 0 14px rgba(86, 227, 159, 0.85);
-  animation: solve-popup-float 1.6s ease-out forwards;
+  animation: solve-popup-float 0.85s ease-out forwards;
 }
 @keyframes solve-popup-float {
   0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
@@ -363,18 +363,20 @@ a:hover { text-decoration: underline; }
   100% { opacity: 0; transform: translate(-50%, -170%) scale(0.9); }
 }
 
-/* A second popup, just for the points a claim earned -- launches from
-   the same spot as .solve-popup but a beat later (animation-delay) and
-   rises further, so the two never collide even though they start in
-   the same place. Colored by the chain's multiplier tier using the
-   exact same sky/amber/fuchsia palette as cellValueColorClass in
-   grid_controller.js, so the color that flashes always matches the
+/* A second popup, just for the points a claim earned. Rather than
+   launching alongside .solve-popup, grid_controller.js#showRewardSequence
+   schedules this to appear right as the equation popup above is nearly
+   faded out -- see REWARD_STEP_MS there, tuned against this animation's
+   own duration -- so the two read as a one-after-another cascade, not a
+   pile of overlapping text. Colored by the chain's multiplier tier
+   using the exact same sky/amber/fuchsia palette as cellValueColorClass
+   in grid_controller.js, so the color that flashes always matches the
    digit band that earned it. */
 .points-popup {
   position: absolute; transform: translate(-50%, -50%);
   font-size: clamp(1.05rem, 4.2vw, 1.6rem); font-weight: 800; white-space: nowrap;
   opacity: 0.95;
-  animation: points-popup-float 1.9s ease-out 0.15s both;
+  animation: points-popup-float 0.85s ease-out both;
 }
 .points-popup-low { color: #7dd3fc; text-shadow: 0 0 14px rgba(125, 211, 252, 0.85); }
 .points-popup-mid { color: #ffb84d; text-shadow: 0 0 14px rgba(255, 184, 77, 0.85); }
@@ -387,18 +389,19 @@ a:hover { text-decoration: underline; }
 }
 
 /* A third popup, only for chains that earned the length bonus (4+
-   cells -- see ClaimService::MIN_CHAIN_LENGTH_FOR_BONUS). Launches last
-   of the three (longest animation-delay) and rises furthest, in a hot
-   orange/red "combo" color distinct from the sky/amber/fuchsia digit
-   palette so it reads as its own kind of bonus, not just a bigger
-   version of the points popup. A slight rotation wobble on the way up
-   sells the "big combo" excitement a plain float doesn't. */
+   cells -- see ClaimService::MIN_CHAIN_LENGTH_FOR_BONUS). Last in the
+   cascade, scheduled (again via showRewardSequence) to appear as the
+   points popup above is nearly faded, in a hot orange/red "combo" color
+   distinct from the sky/amber/fuchsia digit palette so it reads as its
+   own kind of bonus, not just a bigger version of the points popup. A
+   slight rotation wobble on the way up sells the "big combo" excitement
+   a plain float doesn't. */
 .chain-popup {
   position: absolute; transform: translate(-50%, -50%);
   font-size: clamp(1.2rem, 5.2vw, 1.9rem); font-weight: 800; white-space: nowrap;
   color: #ff5f5f; text-shadow: 0 0 16px rgba(255, 95, 95, 0.9), 0 0 30px rgba(255, 150, 60, 0.5);
   opacity: 0.95;
-  animation: chain-popup-float 2.3s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+  animation: chain-popup-float 0.95s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes chain-popup-float {
   0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(-6deg); }

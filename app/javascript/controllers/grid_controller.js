@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { playAdd, playMultiply, playRemove, playClaim, playFail, playVictory } from "sfx"
+import { playAdd, playMultiply, playRemove, playClaim, playFail, playVictory, playReward } from "sfx"
 import { spawnPixiShatter } from "pixi_shatter"
 
 // Click a neighboring cell to link it with "+". Double-click a neighboring
@@ -623,9 +623,7 @@ export default class extends Controller {
       const { value, points, multiplier, chain_length: chainLength, chain_bonus: chainBonus, target_id: targetId } = data.result
       const chainNote = chainBonus > 1 ? ` \u00B7 ${chainLength}-chain!` : ""
       this.flashMessage(`Claimed ${value}! +${points} pts (${multiplier}x${chainNote})`, "success")
-      this.showSolvePopup(`${expressionForPopup} = ${value}`, popupPosition)
-      this.showPointsPopup(points, multiplier, popupPosition)
-      if (chainBonus > 1) this.showChainPopup(chainLength, popupPosition)
+      this.showRewardSequence({ expressionForPopup, value, points, multiplier, chainLength, chainBonus, position: popupPosition })
       // Lets other controllers on this same element (see demo_controller.js)
       // react to a successful claim without grid_controller needing to know
       // anything about them -- e.g. the demo walkthrough waits for this to
@@ -639,6 +637,38 @@ export default class extends Controller {
       this.flashMessage(data.result.message || "No matching target.", "warning")
     } else {
       this.render()
+    }
+  }
+
+  // Reward popups cascade one at a time -- equation, then points, then
+  // (only for a 4+ cell chain) the chain-length bonus -- each one
+  // popping in right as the previous one is nearly faded out, rather
+  // than all launching together and piling up on the same spot.
+  // REWARD_STEP_MS is tuned against each popup's own CSS animation
+  // duration (see the *-popup-float keyframes in application.css) so
+  // the handoff lands in that "almost faded" window. Each step also
+  // gets its own chime, climbing one step higher than the last (see
+  // sfx.js#playReward), so the cascade sounds like it's building same
+  // as it looks.
+  showRewardSequence({ expressionForPopup, value, points, multiplier, chainLength, chainBonus, position }) {
+    const REWARD_STEP_MS = 650
+    let step = 0
+
+    playReward(step)
+    this.showSolvePopup(`${expressionForPopup} = ${value}`, position)
+
+    setTimeout(() => {
+      step += 1
+      playReward(step)
+      this.showPointsPopup(points, multiplier, position)
+    }, REWARD_STEP_MS)
+
+    if (chainBonus > 1) {
+      setTimeout(() => {
+        step += 1
+        playReward(step)
+        this.showChainPopup(chainLength, position)
+      }, REWARD_STEP_MS * 2)
     }
   }
 
@@ -671,7 +701,8 @@ export default class extends Controller {
   // Floats a translucent "3 + 5 = 8" label up from the solved chain's
   // location and fades it out. Appended to popupLayerTarget, which sits
   // OUTSIDE gridTarget specifically so grid re-renders never wipe it out
-  // mid-animation.
+  // mid-animation. First in the reward cascade -- see
+  // showRewardSequence for how the other two are timed relative to it.
   showSolvePopup(text, position) {
     if (!this.hasPopupLayerTarget) return
 
@@ -683,16 +714,16 @@ export default class extends Controller {
 
     this.popupLayerTarget.appendChild(el)
     el.addEventListener("animationend", () => el.remove())
-    setTimeout(() => el.remove(), 1800) // safety net in case animationend never fires
+    setTimeout(() => el.remove(), 1000) // safety net in case animationend never fires
   }
 
-  // A second, separate popup for the points a claim actually earned --
-  // starts a beat after showSolvePopup (see the animation-delay on
-  // .points-popup) and rises further, so the two never overlap even
-  // though they launch from the exact same spot. Colored by the chain's
-  // multiplier tier using the SAME sky/amber/fuchsia palette as
-  // cellValueColorClass, so "what color just flashed" always tells you
-  // which digit band earned that multiplier.
+  // A second popup for the points a claim actually earned -- see
+  // showRewardSequence, which schedules this to appear right as
+  // showSolvePopup's own popup is nearly faded, rather than launching
+  // together. Colored by the chain's multiplier tier using the SAME
+  // sky/amber/fuchsia palette as cellValueColorClass, so "what color
+  // just flashed" always tells you which digit band earned that
+  // multiplier.
   showPointsPopup(points, multiplier, position) {
     if (!this.hasPopupLayerTarget || !points) return
 
@@ -704,7 +735,7 @@ export default class extends Controller {
 
     this.popupLayerTarget.appendChild(el)
     el.addEventListener("animationend", () => el.remove())
-    setTimeout(() => el.remove(), 2200) // safety net in case animationend never fires
+    setTimeout(() => el.remove(), 1000) // safety net in case animationend never fires
   }
 
   multiplierColorClass(multiplier) {
@@ -714,21 +745,20 @@ export default class extends Controller {
   }
 
   // A third popup, only for chains long enough to earn the length bonus
-  // (4+ cells -- see ClaimService::MIN_CHAIN_LENGTH_FOR_BONUS). Launches
-  // last and rises furthest of the three, and reads as "NxN CHAIN!!"
-  // (e.g. a 4-cell chain shows "4x 4CHAIN!!") since the bonus always
-  // equals the chain's own length by design -- the bigger the chain,
-  // the bigger both numbers get, together.
+  // (4+ cells -- see ClaimService::MIN_CHAIN_LENGTH_FOR_BONUS). Last in
+  // the reward cascade (see showRewardSequence), and reads as "NxN
+  // CHAIN!!" (e.g. a 4-cell chain shows "4x 4CHAIN!!") since the bonus
+  // always equals the chain's own length by design -- the bigger the
+  // chain, the bigger both numbers get, together.
   showChainPopup(chainLength, position) {
     if (!this.hasPopupLayerTarget || !chainLength) return
 
     const el = document.createElement("div")
     el.className = "chain-popup"
-    // Nudged sideways from the shared launch point -- all three popups
-    // start in the same spot and float straight up, so without this
-    // offset the chain popup would sit directly on top of the points
-    // popup for most of their overlapping lifespan instead of reading
-    // as two separate callouts.
+    // Nudged sideways from the shared launch point -- even with the
+    // cascade staggered in time, both popups float straight up from the
+    // same spot, so this keeps them from sitting exactly on top of each
+    // other during their brief handoff overlap.
     const offsetX = Math.min(92, Math.max(8, position.x + 10))
     el.style.left = `${offsetX}%`
     el.style.top = `${position.y}%`
@@ -736,7 +766,7 @@ export default class extends Controller {
 
     this.popupLayerTarget.appendChild(el)
     el.addEventListener("animationend", () => el.remove())
-    setTimeout(() => el.remove(), 2600) // safety net in case animationend never fires
+    setTimeout(() => el.remove(), 1100) // safety net in case animationend never fires
   }
 
   // Captures each claimed cell's ACTUAL on-screen position and size

@@ -80,6 +80,19 @@ export function playFail() {
   tone({ freq: 160, glideTo: 90, duration: 0.22, type: "sawtooth", gain: 0.1 })
 }
 
+// A single bright chime, reused once per popup in a claim's reward
+// cascade (equation -> points -> chain bonus, when it applies -- see
+// grid_controller.js#showRewardSequence). step 0 is the base pitch, and
+// each subsequent step climbs a fixed major third (4 semitones) higher
+// -- the same interval playClaim's own arpeggio climbs by -- so the
+// sequence sounds like it's building toward something, in step with
+// each popup popping in right as the last one fades.
+export function playReward(step = 0) {
+  const base = 523.25 // C5, same starting note as playClaim's arpeggio
+  const freq = base * Math.pow(2, (step * 4) / 12)
+  tone({ freq, duration: 0.18, type: "triangle", gain: 0.15 })
+}
+
 // A brighter fanfare -- used once when a whole game completes.
 export function playVictory() {
   const notes = [392, 523.25, 659.25, 783.99, 1046.5]
