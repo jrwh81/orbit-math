@@ -2,25 +2,40 @@
 
 <section class="hero hero-compact">
   <h1>Leaderboard</h1>
-  <p class="hero-copy">Ranked by total points within each difficulty &mdash; a Beginner regular and an Expert grinder aren't really competing on the same scale, so they don't share a table.</p>
+  <p class="hero-copy">Ranked by each player's single best solo game &mdash; not a career total -- within each difficulty. A Beginner regular and an Expert grinder aren't really competing on the same scale, so they don't share a table.</p>
 </section>
 
 <% @leaderboards.each do |difficulty, stats| %>
   <section class="card card-wide">
     <h2><%= PuzzleGenerator::DIFFICULTY_LEVELS.dig(difficulty, :label) %></h2>
     <% if stats.any? %>
-      <div class="game-list-scroll">
-        <ol class="game-list">
-          <% stats.each_with_index do |stat, i| %>
-            <li>
-              <strong>#<%= i + 1 %> <%= stat.user.name %></strong>
-              &middot; <%= stat.total_points %> pts
-              &middot; <%= stat.games_won %> wins
-              &middot; <%= stat.targets_claimed %> prizes won
-              &middot; <%= stat.games_played %> games played
-            </li>
-          <% end %>
-        </ol>
+      <div class="leaderboard-scroll">
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th class="lb-col-rank">Rank</th>
+              <th class="lb-col-player">Player</th>
+              <th class="lb-col-best">Best solo game</th>
+              <th class="lb-col-num">Total pts</th>
+              <th class="lb-col-num">Wins</th>
+              <th class="lb-col-num">Prizes won</th>
+              <th class="lb-col-num">Games played</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% stats.each_with_index do |stat, i| %>
+              <tr class="<%= "lb-top-#{i + 1}" if i < 3 %>">
+                <td class="lb-col-rank"><span class="lb-rank-badge">#<%= i + 1 %></span></td>
+                <td class="lb-col-player"><%= stat.user.name %></td>
+                <td class="lb-col-best"><span class="lb-best-score"><%= stat.best_solo_score %></span> pts</td>
+                <td class="lb-col-num"><%= stat.total_points %></td>
+                <td class="lb-col-num"><%= stat.games_won %></td>
+                <td class="lb-col-num"><%= stat.targets_claimed %></td>
+                <td class="lb-col-num"><%= stat.games_played %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
       </div>
     <% else %>
       <p class="muted">No games played at this difficulty yet.</p>

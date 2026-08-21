@@ -43,11 +43,13 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     body = JSON.parse(response.body)
     assert body["success"]
     assert_equal "starchaser", body["username"] # usernames are downcased before saving
+    refute body["account_created"], "no password was set, so this should NOT count as a durable account"
 
     guest.reload
     assert_equal "starchaser", guest.username
     assert_equal "star@example.com", guest.email
     assert guest.name_claimed?
+    assert guest.guest?, "claiming just a name/email shouldn't clear the guest flag -- there's still no password"
   end
 
   test "PATCH /claim_name works with no email at all -- it's optional" do
@@ -60,6 +62,48 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert JSON.parse(response.body)["success"]
     assert_nil guest.reload.email
     assert guest.reload.name_claimed?
+  end
+
+  test "PATCH /claim_name with a password turns the guest into a real, durable account" do
+    get play_path
+    guest = User.last
+
+    patch claim_name_path, params: { username: "FullAccountNow", password: "supersecret" }
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert body["success"]
+    assert body["account_created"], "setting a password should be reported as creating a real account"
+
+    guest.reload
+    assert_equal "fullaccountnow", guest.username
+    refute guest.guest?, "a guest who sets a password is no longer just a walk-up guest"
+    assert guest.name_claimed?
+
+    # The whole point: they can now log back in later, in an entirely
+    # separate session, using nothing but the name and password they
+    # just set here.
+    delete logout_path
+    post login_path, params: { username: "fullaccountnow", password: "supersecret" }
+    assert_redirected_to root_path
+  end
+
+  test "PATCH /claim_name rejects a password shorter than 6 characters and leaves the guest untouched" do
+    get play_path
+    guest = User.last
+    original_username = guest.username
+
+    patch claim_name_path, params: { username: "TooShortPw", password: "abc" }
+
+    assert_response :unprocessable_entity
+    body = JSON.parse(response.body)
+    refute body["success"]
+    assert body["errors"].any?
+
+    guest.reload
+    assert guest.guest?
+    refute guest.name_claimed?
+    assert_equal original_username, guest.username, "a failed update shouldn't partially apply the new name either"
   end
 
   test "PATCH /claim_name rejects a name that's already taken, without marking name_claimed" do

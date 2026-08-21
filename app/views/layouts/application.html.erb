@@ -11,6 +11,31 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
+    <%# Social share preview (Open Graph + Twitter Card) -- defaults to
+        the homepage's own art/copy on every page unless a specific page
+        overrides them via content_for(:og_title) etc. og:image MUST be
+        an absolute URL (relative paths are silently ignored by every
+        platform that reads these tags), hence request.base_url rather
+        than just the public/ path. See public/og-image.jpg -- a real
+        screenshot of the actual grid mid-claim (points + chain-bonus
+        popups caught in the moment), not a generic logo card. %>
+    <% og_title = content_for(:og_title) || "#{@game.name} — #{@game.tagline}" %>
+    <% og_description = content_for(:og_description) || "Link numbers with addition and multiplication to win real prizes. Play free, no signup needed." %>
+    <% og_image_url = "#{request.base_url}/og-image.jpg" %>
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="<%= @game.name %>">
+    <meta property="og:title" content="<%= og_title %>">
+    <meta property="og:description" content="<%= og_description %>">
+    <meta property="og:image" content="<%= og_image_url %>">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:url" content="<%= request.original_url %>">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="<%= og_title %>">
+    <meta name="twitter:description" content="<%= og_description %>">
+    <meta name="twitter:image" content="<%= og_image_url %>">
+
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
 

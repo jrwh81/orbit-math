@@ -196,4 +196,23 @@ class HomeControllerTest < ActionDispatch::IntegrationTest
     assert_select "button.nav-toggle[data-action='nav#toggle'][aria-label='Menu'][aria-expanded='false']"
     assert_select "nav.site-nav[data-nav-target='menu']"
   end
+
+  test "homepage renders Open Graph and Twitter Card tags with an absolute image URL, for social link previews" do
+    get root_path
+    assert_response :success
+
+    expected_image_url = "#{request.base_url}/og-image.jpg"
+    assert_select "meta[property='og:type'][content='website']"
+    assert_select "meta[property='og:title']"
+    assert_select "meta[property='og:description']"
+    assert_select "meta[property='og:image'][content=?]", expected_image_url
+    assert_select "meta[property='og:url'][content=?]", root_url
+    assert_select "meta[name='twitter:card'][content='summary_large_image']"
+    assert_select "meta[name='twitter:image'][content=?]", expected_image_url
+
+    # Every platform that reads these tags ignores relative image paths
+    # outright -- this is the one thing that would silently break the
+    # whole feature if it regressed.
+    assert_match(/\Ahttps?:\/\//, expected_image_url)
+  end
 end

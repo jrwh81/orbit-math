@@ -104,7 +104,7 @@ function buildChainConnectorMap(path, ops) {
 
 export default class extends Controller {
   static targets = ["grid", "targets", "scoreboard", "timer", "expression", "pointsTotal", "message", "completion", "popupLayer",
-    "claimNameInput", "claimEmailInput", "claimNameError"]
+    "claimNameInput", "claimEmailInput", "claimPasswordInput", "claimNameError"]
   static values = {
     submitUrl: String,
     finishUrl: String,
@@ -333,9 +333,15 @@ export default class extends Controller {
         <p class="claim-name-error" data-grid-target="claimNameError"></p>
         <input type="text" class="claim-name-input" data-grid-target="claimNameInput" placeholder="Your name" value="${currentName}" maxlength="20">
         <input type="email" class="claim-name-input" data-grid-target="claimEmailInput" placeholder="Email (optional)">
+        <input type="password" class="claim-name-input" data-grid-target="claimPasswordInput" placeholder="Set a password (optional)" minlength="6" autocomplete="new-password">
+        <p class="claim-name-hint">
+          Right now there's no way to log back into this account later --
+          set a password to save it for good. Leave it blank to just claim
+          your leaderboard spot for this round.
+        </p>
         <div class="stats-actions">
           <button type="button" class="btn btn-secondary" data-action="grid#skipClaimName">Skip</button>
-          <button type="button" class="btn btn-primary" data-action="grid#submitClaimName">Save to leaderboard</button>
+          <button type="button" class="btn btn-primary" data-action="grid#submitClaimName">Save</button>
         </div>
       </div>
     `
@@ -354,12 +360,23 @@ export default class extends Controller {
   // Name has to be unique -- same validation the model already enforces
   // for every account -- so a collision here is a normal, expected
   // outcome, not an error state; just surface it and let them try again.
+  // Password is genuinely optional: skip it and this just claims a
+  // leaderboard spot for the name, same as before. Set one (6+
+  // characters, same minimum the model enforces everywhere else) and
+  // the account becomes a real, durable login instead of a one-round
+  // guest -- see UsersController#claim_name for why that's the whole
+  // point of offering this at all.
   async submitClaimName() {
     const username = this.claimNameInputTarget.value.trim()
     const email = this.hasClaimEmailInputTarget ? this.claimEmailInputTarget.value.trim() : ""
+    const password = this.hasClaimPasswordInputTarget ? this.claimPasswordInputTarget.value : ""
 
     if (!username) {
       this.claimNameErrorTarget.textContent = "Enter a name first."
+      return
+    }
+    if (password && password.length < 6) {
+      this.claimNameErrorTarget.textContent = "Password needs to be at least 6 characters (or leave it blank)."
       return
     }
 
@@ -372,7 +389,7 @@ export default class extends Controller {
           "X-CSRF-Token": this.csrfToken(),
           Accept: "application/json"
         },
-        body: `username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}`
+        body: `username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
       })
       data = await response.json()
     } catch (e) {
@@ -381,7 +398,10 @@ export default class extends Controller {
     }
 
     if (data.success) {
-      this.replaceClaimNameBlockWithActions(`You're on the board as ${data.username}!`)
+      const note = data.account_created
+        ? `Account created! Log in anytime as ${data.username}.`
+        : `You're on the board as ${data.username}!`
+      this.replaceClaimNameBlockWithActions(note)
     } else {
       this.claimNameErrorTarget.textContent = (data.errors && data.errors[0]) || "Couldn't save that name."
     }
