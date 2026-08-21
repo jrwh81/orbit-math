@@ -206,6 +206,9 @@ class HomeControllerTest < ActionDispatch::IntegrationTest
     assert_select "meta[property='og:title']"
     assert_select "meta[property='og:description']"
     assert_select "meta[property='og:image'][content=?]", expected_image_url
+    assert_select "meta[property='og:image:secure_url'][content=?]", expected_image_url
+    assert_select "meta[property='og:image:width'][content='1200']"
+    assert_select "meta[property='og:image:height'][content='630']"
     assert_select "meta[property='og:url'][content=?]", root_url
     assert_select "meta[name='twitter:card'][content='summary_large_image']"
     assert_select "meta[name='twitter:image'][content=?]", expected_image_url
@@ -214,5 +217,15 @@ class HomeControllerTest < ActionDispatch::IntegrationTest
     # outright -- this is the one thing that would silently break the
     # whole feature if it regressed.
     assert_match(/\Ahttps?:\/\//, expected_image_url)
+  end
+
+  test "the OG image file exists and is a real image, not an empty placeholder" do
+    path = Rails.root.join("public", "og-image.jpg")
+    assert File.exist?(path), "public/og-image.jpg is missing"
+    # A JPEG file always starts with this two-byte magic number -- cheap
+    # smoke test that this is a real image and not an empty/corrupt file,
+    # without pulling in an image-processing gem just for one test.
+    assert_equal "\xFF\xD8".b, File.binread(path, 2)
+    assert File.size(path) > 10_000, "suspiciously small for a real screenshot -- likely corrupted or truncated"
   end
 end
